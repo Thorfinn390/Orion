@@ -1,4 +1,4 @@
-import { Car, ShoppingBag, Sofa, Utensils } from "lucide-react-native";
+// import { Car, ShoppingBag, Sofa, Utensils } from "lucide-react-native";
 import { Flight, SuggestedService, TimelineStep } from "./types";
 export const MOCK_FLIGHTS: Flight[] = [
   {
