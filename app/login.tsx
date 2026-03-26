@@ -109,14 +109,14 @@ export default function LoginPage() {
         </View>
 
         <View className="items-center gap-y-4">
-          <TouchableOpacity onPress={handleAuth} className="w-full h-14 bg-indigo-600 rounded-2xl items-center justify-center shadow-lg">
+          <TouchableOpacity onPress={handleAuth} className="w-full h-14 bg-[#0C7B93] rounded-2xl items-center justify-center shadow-lg">
             <Text className="text-white font-bold text-lg">{isSignUp ? "Sign Up" : "Login"}</Text>
           </TouchableOpacity>
 
           <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setErrors({email:"", password:"", confirm:""}); }}>
             <Text className="text-slate-500 text-xs">
               {isSignUp ? "Already have an account? " : "Don't have an account? "}
-              <Text className="text-indigo-600 font-bold">{isSignUp ? "Login" : "Sign Up"}</Text>
+              <Text className="text-[#0C7B93]s font-bold">{isSignUp ? "Login" : "Sign Up"}</Text>
             </Text>
           </TouchableOpacity>
         </View>
