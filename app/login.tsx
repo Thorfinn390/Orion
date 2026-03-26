@@ -19,29 +19,24 @@ export default function LoginPage() {
     let valid = true;
     let newErrors = { email: "", password: "", confirm: "" };
 
-    // Regex Definitions
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const illegalCharRegex = /[^A-Za-z\d$@#%&*!?]/;
     const strengthRegex = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[$@#%&*!?])[A-Za-z\d$@#%&*!?]{8,}$/;
 
-    // 1. Email Validation (Both modes)
     if (!emailRegex.test(email.trim())) {
       newErrors.email = "Please enter a valid email";
       valid = false;
     }
 
-    // 2. Password Validation (Both modes - Injection Protection)
     if (illegalCharRegex.test(password)) {
       newErrors.password = "This symbol is illegal";
       valid = false;
     } 
-    // Additional Strength Check (Signup only)
     else if (isSignUp && !strengthRegex.test(password)) {
       newErrors.password = "8+ chars, upper, lower, num, symbol required";
       valid = false;
     }
 
-    // 3. Confirm Password (Signup only)
     if (isSignUp && password !== confirmPassword) {
       newErrors.confirm = "Passwords do not match";
       valid = false;
@@ -53,8 +48,7 @@ export default function LoginPage() {
 
   const handleAuth = () => {
     if (validate()) {
-      // Logic for backend call goes here
-      console.log("Input sanitized. Proceeding to Voyager system...");
+      console.log("Input sanitized. Proceeding...");
     }
   };
 
@@ -90,7 +84,17 @@ export default function LoginPage() {
                 secureTextEntry
                 className={`w-full h-12 bg-slate-50 rounded-xl px-4 border ${errors.password ? 'border-red-400' : 'border-slate-100'}`}
               />
-              {errors.password ? <Text className="text-[10px] text-red-500 font-bold self-end mt-1">{errors.password}</Text> : null}
+              {/* Error and Forgot Password logic */}
+              <View className="flex-row justify-between mt-3">
+                {!isSignUp && (
+                  <TouchableOpacity>
+                    <Text className="text-[10px] text-[#0C7B93] font-bold">Forgot Password?</Text>
+                  </TouchableOpacity>
+                )}
+                {/* Spacer if not signup to keep error right-aligned */}
+                {isSignUp && <View />} 
+                {errors.password ? <Text className="text-[10px] text-red-500 font-bold">{errors.password}</Text> : null}
+              </View>
             </View>
 
             {/* Confirm Password Field */}
@@ -116,7 +120,7 @@ export default function LoginPage() {
           <TouchableOpacity onPress={() => { setIsSignUp(!isSignUp); setErrors({email:"", password:"", confirm:""}); }}>
             <Text className="text-slate-500 text-xs">
               {isSignUp ? "Already have an account? " : "Don't have an account? "}
-              <Text className="text-[#0C7B93]s font-bold">{isSignUp ? "Login" : "Sign Up"}</Text>
+              <Text className="text-[#0C7B93] font-bold">{isSignUp ? "Login" : "Sign Up"}</Text>
             </Text>
           </TouchableOpacity>
         </View>
