@@ -8,8 +8,12 @@ export const unstable_settings = {
 
 export default function RootLayout() {
   return (
-    <Stack>
-      <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+    <Stack screenOptions={{ headerShown: false }}>
+      {/* 1. The main app interface */}
+      <Stack.Screen name="(tabs)" />
+      
+      {/* 2. The login page (Must be named exactly like your file) */}
+      <Stack.Screen name="login" />
     </Stack>
   );
 }

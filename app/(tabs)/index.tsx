@@ -12,10 +12,15 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { JourneyTimeline } from "../../components/JourneyTimeline";
 import { ServicesGrid } from "../../components/ServicesGrid";
 import { TicketCard } from "../../components/TicketCard";
+import { Redirect ,useRouter } from 'expo-router';
+import { useLayoutEffect } from 'react';
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
 
+  const token = ""; 
+
+  
   useEffect(() => {
     const timer = setTimeout(() => {
       setLoading(false);
@@ -23,7 +28,9 @@ export default function HomeScreen() {
 
     return () => clearTimeout(timer);
   }, []);
-
+  if (token === "") {
+    return <Redirect href="/login" />;
+  }
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 justify-center items-center">
