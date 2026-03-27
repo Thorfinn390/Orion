@@ -145,7 +145,12 @@ export default function LoginScreen() {
                   <Text className="text-meta text-xs font-bold uppercase tracking-wider">
                     Password
                   </Text>
-                  <TouchableOpacity activeOpacity={0.7}>
+                  <TouchableOpacity
+                    activeOpacity={0.7}
+                    onPress={() => {
+                      router.push("/pages/auth/ForgetPassSteps/StepOne");
+                    }}
+                  >
                     <Text className="text-primaryBrand text-xs font-medium">
                       Forgot Password?
                     </Text>

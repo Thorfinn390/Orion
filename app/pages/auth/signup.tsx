@@ -33,13 +33,7 @@ export default function SignUpScreen() {
   const [agreed, setAgreed] = useState(false);
 
   const handleCreateAccount = () => {
-    console.log("Create account:", {
-      fullName,
-      contactMethod,
-      contact,
-      password,
-      agreed,
-    });
+    router.push("/pages/auth/OTP");
   };
 
   return (
