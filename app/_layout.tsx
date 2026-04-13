@@ -25,7 +25,6 @@ export default function RootLayout() {
         console.warn(e);
       } finally {
         setIsLoggedIn(false);
-        setSplashScreenReady(true);
         setIsLoading(false);
       }
     }
@@ -33,15 +32,15 @@ export default function RootLayout() {
     checkLogIn();
   }, []);
 
-  useEffect(() => {
-    if (splashScreenReady) {
-      SplashScreen.hide();
-    }
-  }, [splashScreenReady]);
+  // useEffect(() => {
+  //   if (splashScreenReady) {
+  //     SplashScreen.hide();
+  //   }
+  // }, [splashScreenReady]);
 
-  if (!splashScreenReady) {
-    return null;
-  }
+  // if (!splashScreenReady) {
+  //   return null;
+  // }
 
   if (isLoading) {
     return (
@@ -49,7 +48,7 @@ export default function RootLayout() {
         source={require("@/assets/images/SplashScreen1.png")}
         resizeMode="cover"
         className="flex-1"
-      ></ImageBackground>
+      />
     );
   }
 
