@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -29,8 +29,81 @@ export default function LoginScreen() {
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
 
+  const [identifierError, setIdentifierError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [isIdentifierValid, setIsIdentifierValid] = useState(false);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+
+  useEffect(() => {
+    validateIdentifier(identifier);
+  }, [identifier, authMethod]);
+
+  useEffect(() => {
+    validatePassword(password);
+  }, [password]);
+
+  const validateIdentifier = (value: string) => {
+    if (!value) {
+      setIdentifierError("");
+      setIsIdentifierValid(false);
+      return;
+    }
+
+    if (authMethod === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(value)) {
+        setIdentifierError("Email format is valid");
+        setIsIdentifierValid(true);
+      } else {
+        setIdentifierError("Invalid email format");
+        setIsIdentifierValid(false);
+      }
+    } else {
+      const cleanPhone = value.replace(/\s/g, "");
+      const phoneRegex = /^(76|81|03|70|01|79|71)\d{6}$/;
+
+      if (phoneRegex.test(cleanPhone)) {
+        setIdentifierError("Phone number is valid");
+        setIsIdentifierValid(true);
+      } else {
+        setIdentifierError(
+          "Must be 8 digits starting with 76, 81, 03, 70, 01, 79, or 71",
+        );
+        setIsIdentifierValid(false);
+      }
+    }
+  };
+
+  const validatePassword = (value: string) => {
+    if (!value) {
+      setPasswordError("");
+      setIsPasswordValid(false);
+      return;
+    }
+
+    const hasUpperCase = /[A-Z]/.test(value);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(value);
+    const isLongEnough = value.length >= 8;
+
+    if (!isLongEnough) {
+      setPasswordError("Min 8 characters required");
+      setIsPasswordValid(false);
+    } else if (!hasUpperCase) {
+      setPasswordError("Must contain at least one uppercase letter");
+      setIsPasswordValid(false);
+    } else if (!hasSpecialChar) {
+      setPasswordError("Must contain at least one special character");
+      setIsPasswordValid(false);
+    } else {
+      setPasswordError("Password meets all requirements");
+      setIsPasswordValid(true);
+    }
+  };
+
   const handleSignIn = () => {
-    router.replace("/(tabs)");
+    if (isIdentifierValid && isPasswordValid) {
+      router.replace("/(tabs)");
+    }
   };
 
   return (
@@ -45,7 +118,6 @@ export default function LoginScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="flex-1 justify-center px-md py-xl">
-            {/* Header Section */}
             <View className="mb-xl">
               <Text className="text-primary font-bold text-3xl mb-xs">
                 Welcome Back
@@ -55,10 +127,12 @@ export default function LoginScreen() {
               </Text>
             </View>
 
-            {/* Auth Method Toggle */}
             <View className="bg-inputSurface p-xs rounded-lg flex-row mb-lg">
               <TouchableOpacity
-                onPress={() => setAuthMethod("email")}
+                onPress={() => {
+                  setAuthMethod("email");
+                  setIdentifier("");
+                }}
                 className={authMethod === "email" ? activeTab : inactiveTab}
                 style={
                   authMethod === "email"
@@ -86,7 +160,10 @@ export default function LoginScreen() {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => setAuthMethod("phone")}
+                onPress={() => {
+                  setAuthMethod("phone");
+                  setIdentifier("");
+                }}
                 className={authMethod === "phone" ? activeTab : inactiveTab}
                 style={
                   authMethod === "phone"
@@ -114,9 +191,7 @@ export default function LoginScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Form Inputs */}
             <View className="gap-lg mb-lg">
-              {/* Identifier Field */}
               <View>
                 <Text className="text-meta text-xs font-bold uppercase tracking-wider mb-sm pl-xs">
                   {authMethod === "email" ? "Email Address" : "Phone Number"}
@@ -127,19 +202,32 @@ export default function LoginScreen() {
                   placeholder={
                     authMethod === "email"
                       ? "name@example.com"
-                      : "+1 (555) 000-0000"
+                      : "+961 71000000"
                   }
                   placeholderTextColor="#7B8BAA"
                   keyboardType={
-                    authMethod === "email" ? "email-address" : "phone-pad"
+                    authMethod === "email" ? "email-address" : "numeric"
                   }
+                  maxLength={authMethod === "phone" ? 8 : undefined}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  className="bg-surface border border-borderDefault rounded-lg px-md py-md text-primary text-base"
+                  className={`bg-surface border ${
+                    identifier === ""
+                      ? "border-borderDefault"
+                      : isIdentifierValid
+                        ? "border-green-500"
+                        : "border-red-500"
+                  } rounded-lg px-md py-md text-primary text-base`}
                 />
+                {identifierError !== "" && (
+                  <Text
+                    className={`text-[10px] mt-1 ml-xs font-medium ${isIdentifierValid ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {identifierError}
+                  </Text>
+                )}
               </View>
 
-              {/* Password Field */}
               <View>
                 <View className="flex-row justify-between items-center mb-sm px-xs">
                   <Text className="text-meta text-xs font-bold uppercase tracking-wider">
@@ -165,7 +253,13 @@ export default function LoginScreen() {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
-                    className="bg-surface border border-borderDefault rounded-lg px-md py-md text-primary text-base pr-xl"
+                    className={`bg-surface border ${
+                      password === ""
+                        ? "border-borderDefault"
+                        : isPasswordValid
+                          ? "border-green-500"
+                          : "border-red-500"
+                    } rounded-lg px-md py-md text-primary text-base pr-xl`}
                   />
                   <Pressable
                     onPress={() => setShowPassword(!showPassword)}
@@ -178,19 +272,29 @@ export default function LoginScreen() {
                     />
                   </Pressable>
                 </View>
+                {passwordError !== "" && (
+                  <Text
+                    className={`text-[10px] mt-1 ml-xs font-medium ${isPasswordValid ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {passwordError}
+                  </Text>
+                )}
               </View>
             </View>
 
-            {/* Sign In Button */}
             <TouchableOpacity
               onPress={handleSignIn}
+              disabled={!isIdentifierValid || !isPasswordValid}
               activeOpacity={0.9}
-              className="bg-primaryBrand rounded-lg py-md items-center justify-center mb-xl"
+              className={`rounded-lg py-md items-center justify-center mb-xl ${
+                isIdentifierValid && isPasswordValid
+                  ? "bg-primaryBrand"
+                  : "bg-gray-400"
+              }`}
             >
               <Text className="text-white font-bold text-base">Sign In</Text>
             </TouchableOpacity>
 
-            {/* Footer */}
             <View className="flex-row justify-center items-center">
               <Text className="text-secondary text-sm">
                 Don&apos;t have an account?
