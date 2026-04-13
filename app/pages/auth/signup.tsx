@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +13,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 type ContactMethod = "email" | "phone";
 
@@ -41,6 +43,8 @@ export default function SignUpScreen() {
   const [isContactValid, setIsContactValid] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
   const [isConfirmValid, setIsConfirmValid] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     validateFullName(fullName);
@@ -136,15 +140,61 @@ export default function SignUpScreen() {
   };
 
   const canSubmit =
-    isFullNameValid &&
-    isContactValid &&
-    isPasswordValid &&
-    isConfirmValid &&
-    agreed;
+    isFullNameValid && isContactValid && isPasswordValid && isConfirmValid;
+  // agreed;
 
-  const handleCreateAccount = () => {
+  const handleCreateAccount = async () => {
     if (canSubmit) {
-      router.push("/pages/auth/OTP");
+      setLoading(true);
+      const data: {
+        fullName: string;
+        password: string;
+        email: string | null;
+        phone: string | null;
+      } = {
+        fullName,
+        password,
+        email: contactMethod === "email" ? contact : null,
+        phone: contactMethod === "phone" ? contact : null,
+      };
+
+      console.log("HERE");
+      try {
+        const response = await fetch("http://10.181.210.57:3005/auth/signUp", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(data),
+        });
+        console.log("here 2");
+        const result = await response.json();
+        console.log("here 3");
+        if (response.ok) {
+          Toast.show({
+            type: "success",
+            text1: "Account Created",
+            text2: "Welcome to Orion! 👋",
+            visibilityTime: 2000,
+          });
+          router.push("/pages/auth/OTP");
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "Sign Up Failed",
+            text2: result.message || "Something went wrong",
+          });
+        }
+      } catch (error) {
+        console.log(error);
+        Toast.show({
+          type: "error",
+          text1: "Connection Error",
+          text2: "Please check your internet connection.",
+        });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -379,7 +429,7 @@ export default function SignUpScreen() {
                 )}
               </View>
 
-              <TouchableOpacity
+              {/* <TouchableOpacity
                 onPress={() => setAgreed(!agreed)}
                 activeOpacity={0.7}
                 className="flex-row items-start gap-sm"
@@ -409,7 +459,7 @@ export default function SignUpScreen() {
                   </Text>
                   .
                 </Text>
-              </TouchableOpacity>
+              </TouchableOpacity> */}
             </View>
 
             <TouchableOpacity
@@ -420,9 +470,13 @@ export default function SignUpScreen() {
                 canSubmit ? "bg-primaryBrand" : "bg-gray-400"
               }`}
             >
-              <Text className="text-white font-bold text-base">
-                Create Orion Account
-              </Text>
+              {loading ? (
+                <ActivityIndicator size="small" color="white" />
+              ) : (
+                <Text className="text-white font-bold text-base">
+                  Create Orion Account
+                </Text>
+              )}
             </TouchableOpacity>
 
             <View className="flex-row justify-center items-center mb-lg">
