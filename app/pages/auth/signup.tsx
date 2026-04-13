@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
@@ -32,8 +32,120 @@ export default function SignUpScreen() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [agreed, setAgreed] = useState(false);
 
+  const [fullNameError, setFullNameError] = useState("");
+  const [contactError, setContactError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  const [confirmError, setConfirmError] = useState("");
+
+  const [isFullNameValid, setIsFullNameValid] = useState(false);
+  const [isContactValid, setIsContactValid] = useState(false);
+  const [isPasswordValid, setIsPasswordValid] = useState(false);
+  const [isConfirmValid, setIsConfirmValid] = useState(false);
+
+  useEffect(() => {
+    validateFullName(fullName);
+  }, [fullName]);
+
+  useEffect(() => {
+    validateContact(contact);
+  }, [contact, contactMethod]);
+
+  useEffect(() => {
+    validatePassword(password);
+    validateConfirm(password, confirmPassword);
+  }, [password, confirmPassword]);
+
+  const validateFullName = (val: string) => {
+    if (!val) {
+      setFullNameError("");
+      setIsFullNameValid(false);
+    } else if (val.trim().length < 3) {
+      setFullNameError("Name is too short");
+      setIsFullNameValid(false);
+    } else {
+      setFullNameError("Looks good");
+      setIsFullNameValid(true);
+    }
+  };
+
+  const validateContact = (val: string) => {
+    if (!val) {
+      setContactError("");
+      setIsContactValid(false);
+      return;
+    }
+
+    if (contactMethod === "email") {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (emailRegex.test(val)) {
+        setContactError("Email is valid");
+        setIsContactValid(true);
+      } else {
+        setContactError("Invalid email address");
+        setIsContactValid(false);
+      }
+    } else {
+      const cleanPhone = val.replace(/\s/g, "");
+      const phoneRegex = /^(76|81|03|70|01|79|71)\d{6}$/;
+      if (phoneRegex.test(cleanPhone)) {
+        setContactError("Phone number is valid");
+        setIsContactValid(true);
+      } else {
+        setContactError("Start with 76, 81, 03, 70, 01, 79, or 71 (8 digits)");
+        setIsContactValid(false);
+      }
+    }
+  };
+
+  const validatePassword = (val: string) => {
+    if (!val) {
+      setPasswordError("");
+      setIsPasswordValid(false);
+      return;
+    }
+    const hasUpperCase = /[A-Z]/.test(val);
+    const hasSpecialChar = /[!@#$%^&*(),.?":{}|<>]/.test(val);
+    const isLongEnough = val.length >= 8;
+
+    if (!isLongEnough) {
+      setPasswordError("Min 8 characters required");
+      setIsPasswordValid(false);
+    } else if (!hasUpperCase) {
+      setPasswordError("At least one uppercase letter required");
+      setIsPasswordValid(false);
+    } else if (!hasSpecialChar) {
+      setPasswordError("At least one special character required");
+      setIsPasswordValid(false);
+    } else {
+      setPasswordError("Strong password");
+      setIsPasswordValid(true);
+    }
+  };
+
+  const validateConfirm = (pass: string, conf: string) => {
+    if (!conf) {
+      setConfirmError("");
+      setIsConfirmValid(false);
+    } else if (pass !== conf) {
+      setConfirmError("Passwords do not match");
+      setIsConfirmValid(false);
+    } else {
+      setConfirmError("Passwords match");
+      setIsConfirmValid(true);
+    }
+  };
+
+  const canSubmit =
+    isFullNameValid &&
+    isContactValid &&
+    isPasswordValid &&
+    isConfirmValid &&
+    agreed;
+
   const handleCreateAccount = () => {
-    router.push("/pages/auth/OTP");
+    if (canSubmit) {
+      router.push("/pages/auth/OTP");
+    }
   };
 
   return (
@@ -48,7 +160,6 @@ export default function SignUpScreen() {
           showsVerticalScrollIndicator={false}
         >
           <View className="flex-1 px-md py-xl">
-            {/* Header */}
             <View className="mb-xl">
               <Text className="text-primary font-bold text-3xl mb-xs">
                 Create your account
@@ -58,9 +169,7 @@ export default function SignUpScreen() {
               </Text>
             </View>
 
-            {/* Form */}
             <View className="gap-lg">
-              {/* Full Name */}
               <View className="gap-sm">
                 <Text className="text-meta text-xs font-bold uppercase tracking-wider pl-xs">
                   Full Name
@@ -72,17 +181,28 @@ export default function SignUpScreen() {
                   placeholderTextColor="#7B8BAA"
                   autoCapitalize="words"
                   autoCorrect={false}
-                  className="bg-surface border border-borderDefault rounded-lg px-md py-md text-primary text-base"
+                  className={`bg-surface border rounded-lg px-md py-md text-primary text-base ${
+                    fullName === ""
+                      ? "border-borderDefault"
+                      : isFullNameValid
+                        ? "border-green-500"
+                        : "border-red-500"
+                  }`}
                 />
+                {fullNameError !== "" && (
+                  <Text
+                    className={`text-[10px] ml-xs font-medium ${isFullNameValid ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {fullNameError}
+                  </Text>
+                )}
               </View>
 
-              {/* Contact Information */}
               <View className="gap-sm">
                 <Text className="text-meta text-xs font-bold uppercase tracking-wider pl-xs">
                   Contact Information
                 </Text>
 
-                {/* Toggle */}
                 <View className="bg-inputSurface p-xs rounded-lg flex-row">
                   <TouchableOpacity
                     onPress={() => {
@@ -93,15 +213,7 @@ export default function SignUpScreen() {
                       contactMethod === "email" ? activeTab : inactiveTab
                     }
                     style={
-                      contactMethod === "email"
-                        ? {
-                            shadowColor: "#0D1A3A",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.08,
-                            shadowRadius: 8,
-                            elevation: 2,
-                          }
-                        : undefined
+                      contactMethod === "email" ? { elevation: 2 } : undefined
                     }
                     activeOpacity={0.7}
                   >
@@ -130,15 +242,7 @@ export default function SignUpScreen() {
                       contactMethod === "phone" ? activeTab : inactiveTab
                     }
                     style={
-                      contactMethod === "phone"
-                        ? {
-                            shadowColor: "#0D1A3A",
-                            shadowOffset: { width: 0, height: 2 },
-                            shadowOpacity: 0.08,
-                            shadowRadius: 8,
-                            elevation: 2,
-                          }
-                        : undefined
+                      contactMethod === "phone" ? { elevation: 2 } : undefined
                     }
                     activeOpacity={0.7}
                   >
@@ -159,26 +263,38 @@ export default function SignUpScreen() {
                   </TouchableOpacity>
                 </View>
 
-                {/* Contact Input */}
                 <TextInput
                   value={contact}
                   onChangeText={setContact}
                   placeholder={
                     contactMethod === "email"
                       ? "alex@concierge.com"
-                      : "+1 (555) 000-0000"
+                      : "+961 71000000"
                   }
                   placeholderTextColor="#7B8BAA"
                   keyboardType={
-                    contactMethod === "email" ? "email-address" : "phone-pad"
+                    contactMethod === "email" ? "email-address" : "numeric"
                   }
+                  maxLength={contactMethod === "phone" ? 8 : undefined}
                   autoCapitalize="none"
                   autoCorrect={false}
-                  className="bg-surface border border-borderDefault rounded-lg px-md py-md text-primary text-base"
+                  className={`bg-surface border rounded-lg px-md py-md text-primary text-base ${
+                    contact === ""
+                      ? "border-borderDefault"
+                      : isContactValid
+                        ? "border-green-500"
+                        : "border-red-500"
+                  }`}
                 />
+                {contactError !== "" && (
+                  <Text
+                    className={`text-[10px] ml-xs font-medium ${isContactValid ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {contactError}
+                  </Text>
+                )}
               </View>
 
-              {/* Password */}
               <View className="gap-sm">
                 <Text className="text-meta text-xs font-bold uppercase tracking-wider pl-xs">
                   Password
@@ -192,7 +308,13 @@ export default function SignUpScreen() {
                     secureTextEntry={!showPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
-                    className="bg-surface border border-borderDefault rounded-lg px-md py-md text-primary text-base pr-xl"
+                    className={`bg-surface border rounded-lg px-md py-md text-primary text-base pr-xl ${
+                      password === ""
+                        ? "border-borderDefault"
+                        : isPasswordValid
+                          ? "border-green-500"
+                          : "border-red-500"
+                    }`}
                   />
                   <Pressable
                     onPress={() => setShowPassword(!showPassword)}
@@ -205,9 +327,15 @@ export default function SignUpScreen() {
                     />
                   </Pressable>
                 </View>
+                {passwordError !== "" && (
+                  <Text
+                    className={`text-[10px] ml-xs font-medium ${isPasswordValid ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {passwordError}
+                  </Text>
+                )}
               </View>
 
-              {/* Confirm Password */}
               <View className="gap-sm">
                 <Text className="text-meta text-xs font-bold uppercase tracking-wider pl-xs">
                   Confirm Password
@@ -221,7 +349,13 @@ export default function SignUpScreen() {
                     secureTextEntry={!showConfirmPassword}
                     autoCapitalize="none"
                     autoCorrect={false}
-                    className="bg-surface border border-borderDefault rounded-lg px-md py-md text-primary text-base pr-xl"
+                    className={`bg-surface border rounded-lg px-md py-md text-primary text-base pr-xl ${
+                      confirmPassword === ""
+                        ? "border-borderDefault"
+                        : isConfirmValid
+                          ? "border-green-500"
+                          : "border-red-500"
+                    }`}
                   />
                   <Pressable
                     onPress={() => setShowConfirmPassword(!showConfirmPassword)}
@@ -236,9 +370,15 @@ export default function SignUpScreen() {
                     />
                   </Pressable>
                 </View>
+                {confirmError !== "" && (
+                  <Text
+                    className={`text-[10px] ml-xs font-medium ${isConfirmValid ? "text-green-500" : "text-red-500"}`}
+                  >
+                    {confirmError}
+                  </Text>
+                )}
               </View>
 
-              {/* Terms */}
               <TouchableOpacity
                 onPress={() => setAgreed(!agreed)}
                 activeOpacity={0.7}
@@ -272,25 +412,19 @@ export default function SignUpScreen() {
               </TouchableOpacity>
             </View>
 
-            {/* Submit Button */}
             <TouchableOpacity
               onPress={handleCreateAccount}
+              disabled={!canSubmit}
               activeOpacity={0.9}
-              className="bg-primaryBrand rounded-lg py-md items-center justify-center mt-xl mb-lg flex-row gap-sm"
-              style={{
-                shadowColor: "#1568C4",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 12,
-                elevation: 4,
-              }}
+              className={`rounded-lg py-md items-center justify-center mt-xl mb-lg flex-row gap-sm ${
+                canSubmit ? "bg-primaryBrand" : "bg-gray-400"
+              }`}
             >
               <Text className="text-white font-bold text-base">
                 Create Orion Account
               </Text>
             </TouchableOpacity>
 
-            {/* Footer */}
             <View className="flex-row justify-center items-center mb-lg">
               <Text className="text-secondary text-sm">
                 Already have an account?{" "}
