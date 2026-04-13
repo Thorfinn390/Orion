@@ -1,19 +1,20 @@
 import { Redirect, Stack } from "expo-router";
 import * as SplashScreen from "expo-splash-screen";
 import { useEffect, useState } from "react";
+import { ImageBackground } from "react-native";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import "./globals.css";
 
-// SplashScreen.setOptions({
-//   duration: 1000,
-//   fade: true,
-// });
-SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({
+  duration: 1000,
+  fade: true,
+});
 
 export default function RootLayout() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [splashScreenReady, setSplashScreenReady] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     async function checkLogIn() {
@@ -23,7 +24,9 @@ export default function RootLayout() {
       } catch (e) {
         console.warn(e);
       } finally {
+        setIsLoggedIn(false);
         setSplashScreenReady(true);
+        setIsLoading(false);
       }
     }
 
@@ -38,6 +41,16 @@ export default function RootLayout() {
 
   if (!splashScreenReady) {
     return null;
+  }
+
+  if (isLoading) {
+    return (
+      <ImageBackground
+        source={require("@/assets/images/SplashScreen1.png")}
+        resizeMode="cover"
+        className="flex-1"
+      ></ImageBackground>
+    );
   }
 
   if (!isLoggedIn) {
