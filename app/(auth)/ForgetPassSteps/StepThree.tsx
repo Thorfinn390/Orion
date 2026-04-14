@@ -228,7 +228,7 @@ export default function ForgotPasswordStep3() {
 
             {/* CTA */}
             <TouchableOpacity
-              onPress={() => router.replace("/pages/auth/login")}
+              onPress={() => router.replace("/(auth)/login")}
               activeOpacity={canSubmit ? 0.9 : 1}
               disabled={!canSubmit}
               className="rounded-lg py-md items-center justify-center flex-row gap-sm"

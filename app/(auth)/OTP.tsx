@@ -51,10 +51,32 @@ export default function OTPScreen() {
     }
   };
 
-  const handleResend = () => {
-    setOtp(Array(OTP_LENGTH).fill(""));
-    setSeconds(594);
-    inputs.current[0]?.focus();
+  const handleResend = async () => {
+    try {
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setSeconds(594);
+      inputs.current[0]?.focus();
+
+      const response = await fetch(
+        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/resend-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email: userEmail }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        alert(data.error || "Failed to resend code");
+        return;
+      }
+    } catch (error) {
+      alert("Connection error. Please try again.");
+    }
   };
 
   const handleConfirm = () => {
@@ -73,7 +95,7 @@ export default function OTPScreen() {
           {/* Header */}
           <View className="gap-sm">
             <Text className="text-primary font-bold text-3xl">
-              Verification
+              Verify Your Email
             </Text>
             <Text className="text-secondary text-base leading-6">
               A message has been sent to{" "}

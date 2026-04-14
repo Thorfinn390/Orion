@@ -132,12 +132,12 @@ export default function LoginScreen() {
 
         const result = await response.json();
         console.log(result);
-        if (response.ok) {
+        if (response.status === 201) {
           await SecureStore.setItemAsync("userToken", result.accessToken);
           await SecureStore.setItemAsync("refreshToken", result.refreshToken);
 
           Toast.show({
-            type: "Logged in successfully",
+            type: "success",
             text1: `Hey ${result?.data?.fullName || "there"}👋`,
             visibilityTime: 2000,
           });
@@ -145,7 +145,7 @@ export default function LoginScreen() {
         } else {
           Toast.show({
             type: "error",
-            text1: "Sign Up Failed",
+            text1: "Login Failed",
             text2: result.message || "Something went wrong",
           });
         }
@@ -291,7 +291,7 @@ export default function LoginScreen() {
                   <TouchableOpacity
                     activeOpacity={0.7}
                     onPress={() => {
-                      router.push("/pages/auth/ForgetPassSteps/StepOne");
+                      router.push("/(auth)/ForgetPassSteps/StepOne");
                     }}
                   >
                     <Text className="text-primaryBrand text-xs font-medium">
@@ -362,7 +362,7 @@ export default function LoginScreen() {
                 activeOpacity={0.7}
                 className="ml-xs"
                 onPress={() => {
-                  router.replace("/pages/auth/signup");
+                  router.replace("/(auth)/signup");
                 }}
               >
                 <Text className="text-primaryBrand font-bold text-sm">

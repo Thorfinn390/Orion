@@ -180,7 +180,7 @@ export default function SignUpScreen() {
             text2: "Welcome to Orion! 👋",
             visibilityTime: 2000,
           });
-          router.push("/pages/auth/OTP");
+          router.push("/(auth)/OTP");
         } else {
           Toast.show({
             type: "error",
@@ -489,7 +489,7 @@ export default function SignUpScreen() {
               <TouchableOpacity
                 activeOpacity={0.7}
                 onPress={() => {
-                  router.replace("/pages/auth/login");
+                  router.replace("/(auth)/login");
                 }}
               >
                 <Text className="text-primaryBrand font-bold text-sm">

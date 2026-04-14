@@ -167,7 +167,7 @@ export default function ForgotPasswordStep1() {
 
             {/* CTA */}
             <TouchableOpacity
-              onPress={() => router.push("/pages/auth/ForgetPassSteps/StepTwo")}
+              onPress={() => router.push("/(auth)/ForgetPassSteps/StepTwo")}
               activeOpacity={0.9}
               className="bg-primaryBrand rounded-lg py-md items-center justify-center flex-row gap-sm"
               style={{

@@ -1,4 +1,5 @@
 import { Redirect } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import { ImageBackground } from "react-native";
 
@@ -9,7 +10,13 @@ export default function Index() {
   useEffect(() => {
     async function checkAuth() {
       try {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        const token = await SecureStore.getItemAsync("userToken");
+        console.log(token);
+
+        //implement refresh token api call later
+        if (token) {
+          setIsLoggedIn(true);
+        }
       } catch (e) {
         console.warn(e);
       } finally {
@@ -30,7 +37,7 @@ export default function Index() {
   }
 
   if (!isLoggedIn) {
-    return <Redirect href="/pages/auth/login" />;
+    return <Redirect href="/(auth)/login" />;
   }
 
   return <Redirect href="/(tabs)/profile" />;
