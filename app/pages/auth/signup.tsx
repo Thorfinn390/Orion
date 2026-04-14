@@ -160,13 +160,16 @@ export default function SignUpScreen() {
 
       console.log("HERE");
       try {
-        const response = await fetch("http://10.181.210.57:3005/auth/signUp", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
+        const response = await fetch(
+          `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/signUp`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(data),
           },
-          body: JSON.stringify(data),
-        });
+        );
         console.log("here 2");
         const result = await response.json();
         console.log("here 3");

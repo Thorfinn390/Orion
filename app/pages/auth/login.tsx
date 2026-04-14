@@ -1,7 +1,9 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Pressable,
@@ -12,6 +14,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 type AuthMethod = "email" | "phone";
 
@@ -33,6 +36,8 @@ export default function LoginScreen() {
   const [passwordError, setPasswordError] = useState("");
   const [isIdentifierValid, setIsIdentifierValid] = useState(false);
   const [isPasswordValid, setIsPasswordValid] = useState(false);
+
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     validateIdentifier(identifier);
@@ -100,9 +105,59 @@ export default function LoginScreen() {
     }
   };
 
-  const handleSignIn = () => {
+  const handleSignIn = async () => {
     if (isIdentifierValid && isPasswordValid) {
-      router.replace("/(tabs)");
+      setLoading(true);
+      const userObject: {
+        email: string | null;
+        phone: string | null;
+        password: string;
+      } = {
+        password,
+        email: authMethod === "email" ? identifier : null,
+        phone: authMethod === "phone" ? identifier : null,
+      };
+
+      try {
+        const response = await fetch(
+          `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(userObject),
+          },
+        );
+
+        const result = await response.json();
+        console.log(result);
+        if (response.ok) {
+          await SecureStore.setItemAsync("userToken", result.accessToken);
+          await SecureStore.setItemAsync("refreshToken", result.refreshToken);
+
+          Toast.show({
+            type: "Logged in successfully",
+            text1: `Hey ${result?.data?.fullName || "there"}👋`,
+            visibilityTime: 2000,
+          });
+          router.push("/(tabs)/profile");
+        } else {
+          Toast.show({
+            type: "error",
+            text1: "Sign Up Failed",
+            text2: result.message || "Something went wrong",
+          });
+        }
+      } catch (e) {
+        console.warn(e);
+        Toast.show({
+          text1: "Error signing in",
+          type: "error",
+        });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
@@ -292,7 +347,11 @@ export default function LoginScreen() {
                   : "bg-gray-400"
               }`}
             >
-              <Text className="text-white font-bold text-base">Sign In</Text>
+              {loading ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Text className="text-white font-bold text-base">Sign In</Text>
+              )}
             </TouchableOpacity>
 
             <View className="flex-row justify-center items-center">
