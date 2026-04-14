@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
+  ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
   Text,
@@ -10,14 +11,17 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
+  const { contactMethod } = useLocalSearchParams();
   const router = useRouter();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [seconds, setSeconds] = useState(594); // 09:54
+  const [seconds, setSeconds] = useState(594);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [isResending, setIsResending] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
 
   useEffect(() => {
@@ -52,11 +56,10 @@ export default function OTPScreen() {
   };
 
   const handleResend = async () => {
-    try {
-      setOtp(Array(OTP_LENGTH).fill(""));
-      setSeconds(594);
-      inputs.current[0]?.focus();
+    if (seconds > 0 || isResending) return;
 
+    setIsResending(true);
+    try {
       const response = await fetch(
         `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/resend-otp`,
         {
@@ -64,7 +67,7 @@ export default function OTPScreen() {
           headers: {
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({ email: userEmail }),
+          body: JSON.stringify({ email: contactMethod }),
         },
       );
 
@@ -74,16 +77,79 @@ export default function OTPScreen() {
         alert(data.error || "Failed to resend code");
         return;
       }
+
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setSeconds(594);
+      inputs.current[0]?.focus();
+
+      Toast.show({
+        type: "success",
+        text1: "OTP Resent",
+        autoHide: true,
+        visibilityTime: 2000,
+      });
     } catch (error) {
       alert("Connection error. Please try again.");
+    } finally {
+      setIsResending(false);
     }
   };
 
-  const handleConfirm = () => {
-    router.replace("/(tabs)");
+  const handleConfirm = async () => {
+    try {
+      const otpString = otp.join("");
+
+      if (otpString.length !== OTP_LENGTH) {
+        Toast.show({
+          type: "error",
+          text1: "Invalid Code",
+          text2: "Please enter the full verification code.",
+        });
+        return;
+      }
+
+      const response = await fetch(
+        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/verify-email`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            email: contactMethod,
+            otp: otpString,
+          }),
+        },
+      );
+
+      const data = await response.json();
+
+      if (response.ok) {
+        Toast.show({
+          type: "success",
+          text1: "Success",
+          text2: "Email verified successfully! 👋",
+        });
+
+        router.replace("/(auth)/login");
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Verification Failed",
+          text2: data.error || "The code you entered is incorrect.",
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Connection Error",
+        text2: "Could not reach the server.",
+      });
+    }
   };
 
   const isComplete = otp.every((d) => d !== "");
+  const canResend = seconds === 0 && !isResending;
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -92,7 +158,6 @@ export default function OTPScreen() {
         className="flex-1"
       >
         <View className="flex-1 px-md justify-center gap-xl">
-          {/* Header */}
           <View className="gap-sm">
             <Text className="text-primary font-bold text-3xl">
               Verify Your Email
@@ -100,14 +165,12 @@ export default function OTPScreen() {
             <Text className="text-secondary text-base leading-6">
               A message has been sent to{" "}
               <Text className="text-primaryBrand font-semibold">
-                +1 (555) ••• ••89
+                {contactMethod}
               </Text>
             </Text>
           </View>
 
-          {/* OTP + Timer + Button */}
           <View className="gap-lg">
-            {/* OTP Inputs */}
             <View className="flex-row justify-between gap-sm">
               {Array(OTP_LENGTH)
                 .fill(0)
@@ -147,7 +210,6 @@ export default function OTPScreen() {
                 ))}
             </View>
 
-            {/* Timer & Resend */}
             <View className="flex-row items-center justify-between px-xs">
               <View className="flex-row items-center gap-xs">
                 <Ionicons name="time-outline" size={18} color="#7B8BAA" />
@@ -155,14 +217,24 @@ export default function OTPScreen() {
                   {formatTime(seconds)}
                 </Text>
               </View>
-              <TouchableOpacity onPress={handleResend} activeOpacity={0.7}>
-                <Text className="text-primaryBrand text-xs font-bold uppercase tracking-wider">
-                  Resend Code
-                </Text>
+              <TouchableOpacity
+                onPress={handleResend}
+                disabled={!canResend}
+                activeOpacity={0.7}
+              >
+                {isResending ? (
+                  <ActivityIndicator size="small" color="#1568C4" />
+                ) : (
+                  <Text
+                    className="text-xs font-bold uppercase tracking-wider"
+                    style={{ color: canResend ? "#1568C4" : "#C9D4E8" }}
+                  >
+                    Resend Code
+                  </Text>
+                )}
               </TouchableOpacity>
             </View>
 
-            {/* Confirm Button */}
             <TouchableOpacity
               onPress={handleConfirm}
               activeOpacity={isComplete ? 0.9 : 1}
@@ -191,7 +263,6 @@ export default function OTPScreen() {
             </TouchableOpacity>
           </View>
 
-          {/* Footer */}
           <View className="flex-row justify-center items-center flex-wrap gap-xs">
             <Text className="text-secondary text-sm">Having trouble?</Text>
             <TouchableOpacity activeOpacity={0.7}>

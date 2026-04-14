@@ -1,3 +1,4 @@
+import * as SecureStore from "expo-secure-store";
 import {
   Bell,
   ChevronRight,
@@ -40,7 +41,10 @@ export default function ProfileScreen() {
         },
         {
           text: "Log Out",
-          onPress: () => console.log("User logged out."),
+          onPress: async () => {
+            await SecureStore.deleteItemAsync("userToken");
+            await SecureStore.deleteItemAsync("refreshToken");
+          },
           style: "destructive",
         },
       ],

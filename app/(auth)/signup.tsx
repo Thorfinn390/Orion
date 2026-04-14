@@ -180,7 +180,13 @@ export default function SignUpScreen() {
             text2: "Welcome to Orion! 👋",
             visibilityTime: 2000,
           });
-          router.push("/(auth)/OTP");
+          router.push({
+            pathname: "/(auth)/OTP",
+            params: {
+              contactMethod:
+                contactMethod === "email" ? data.email : data.phone,
+            },
+          });
         } else {
           Toast.show({
             type: "error",
