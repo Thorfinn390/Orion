@@ -1,5 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
+import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -16,7 +17,7 @@ import Toast from "react-native-toast-message";
 const OTP_LENGTH = 6;
 
 export default function OTPScreen() {
-  const { contactMethod } = useLocalSearchParams();
+  const { contactMethod, password } = useLocalSearchParams();
   const router = useRouter();
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [seconds, setSeconds] = useState(594);
@@ -131,7 +132,40 @@ export default function OTPScreen() {
           text2: "Email verified successfully! 👋",
         });
 
-        router.replace("/(auth)/login");
+        await fetch(
+          `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/login`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              email: contactMethod,
+              phone: null,
+              password, //zustand update later when u use zustand
+            }),
+          },
+        )
+          .then((res) => {
+            if (res.status !== 201) {
+              throw new Error("Error in automatic log in");
+            }
+
+            return res.json();
+          })
+          .then(async (data) => {
+            await SecureStore.setItemAsync("userToken", data.accessToken);
+            await SecureStore.setItemAsync("refreshToken", data.refreshToken);
+
+            Toast.show({
+              type: "success",
+              autoHide: true,
+              visibilityTime: 300,
+              onHide: () => {
+                router.replace("/(tabs)/profile");
+              },
+            });
+          });
       } else {
         Toast.show({
           type: "error",

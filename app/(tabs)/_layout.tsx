@@ -1,6 +1,8 @@
+import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
-import { Home, Map as MapIcon, MessageSquare, User } from "lucide-react-native";
+import { Home, Map as MapIcon, User } from "lucide-react-native";
 import React from "react";
+import { Platform, TouchableOpacity } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 export default function TabLayout() {
@@ -24,6 +26,26 @@ export default function TabLayout() {
           fontWeight: "700",
           marginTop: 4,
         },
+        tabBarButton: (props) => {
+          const { children, style } = props;
+          return (
+            <TouchableOpacity
+              {...props}
+              activeOpacity={0.7}
+              style={style}
+              onPress={(e) => {
+                // Trigger the haptic
+                if (Platform.OS !== "web") {
+                  Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
+                }
+                // Call the original navigation event
+                props.onPress?.(e);
+              }}
+            >
+              {children}
+            </TouchableOpacity>
+          );
+        },
       }}
     >
       <Tabs.Screen
@@ -31,13 +53,6 @@ export default function TabLayout() {
         options={{
           title: "Home",
           tabBarIcon: ({ color }) => <Home size={22} color={color} />,
-        }}
-      />
-      <Tabs.Screen
-        name="ai"
-        options={{
-          title: "AI",
-          tabBarIcon: ({ color }) => <MessageSquare size={22} color={color} />,
         }}
       />
       <Tabs.Screen

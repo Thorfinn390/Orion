@@ -1,10 +1,62 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
-import { Text, TouchableOpacity, View } from "react-native";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import { useState } from "react";
+import { ActivityIndicator, Text, TouchableOpacity, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 export default function ForgotPasswordStep2() {
   const router = useRouter();
+  const { email } = useLocalSearchParams();
+  const [loading, setLoading] = useState(false);
+
+  const handleSendCode = async () => {
+    if (loading) return;
+
+    setLoading(true);
+    try {
+      const response = await fetch(
+        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/resend-otp`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ email }),
+        },
+      );
+
+      if (response.status === 201) {
+        Toast.show({
+          type: "success",
+          text1: "OTP Resent",
+          text2: "Please check your email for the new code.",
+          autoHide: true,
+          visibilityTime: 1500,
+          onHide: () => {
+            router.push({
+              pathname: "/(auth)/ForgetPassSteps/StepThree",
+              params: { email },
+            });
+          },
+        });
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Request Failed",
+          text2: "Could not resend OTP. Please try again later.",
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Connection Error",
+        text2: "Check your internet connection.",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -32,16 +84,7 @@ export default function ForgotPasswordStep2() {
         </View>
 
         {/* Info Card */}
-        <View
-          className="bg-surface rounded-xl p-lg items-center gap-sm border border-borderDefault"
-          style={{
-            shadowColor: "#0D1A3A",
-            shadowOffset: { width: 0, height: 2 },
-            shadowOpacity: 0.06,
-            shadowRadius: 12,
-            elevation: 2,
-          }}
-        >
+        <View className="bg-white rounded-xl p-lg items-center gap-sm border border-borderDefault shadow-card">
           <Text
             className="text-meta font-bold text-center"
             style={{
@@ -53,28 +96,36 @@ export default function ForgotPasswordStep2() {
             Primary Email Address
           </Text>
           <Text className="text-primary font-semibold text-lg text-center">
-            alex.j.weaver@traveler.com
+            {email}
           </Text>
         </View>
 
-        {/* CTA */}
+        {/* CTA Button */}
         <TouchableOpacity
-          onPress={() => router.push("/(auth)/ForgetPassSteps/StepThree")}
-          activeOpacity={0.9}
-          className="bg-primaryBrand rounded-lg py-md items-center justify-center flex-row gap-sm"
-          style={{
-            shadowColor: "#1568C4",
-            shadowOffset: { width: 0, height: 4 },
-            shadowOpacity: 0.2,
-            shadowRadius: 12,
-            elevation: 4,
-          }}
+          activeOpacity={0.8}
+          onPress={handleSendCode}
+          disabled={loading}
+          className={`h-[56px] rounded-xl flex-row items-center justify-center gap-sm shadow-md ${
+            loading ? "bg-borderEmphasis" : "bg-primaryBrand"
+          }`}
         >
-          <Text className="text-white font-bold text-base">Yes, Send Code</Text>
-          <Ionicons name="arrow-forward" size={18} color="#ffffff" />
+          {loading ? (
+            <ActivityIndicator color="#ffffff" />
+          ) : (
+            <>
+              {loading ? (
+                <ActivityIndicator size="small" />
+              ) : (
+                <Text className="text-white font-bold text-base">
+                  Yes, Send Code
+                </Text>
+              )}
+              <Ionicons name="arrow-forward" size={18} color="#ffffff" />
+            </>
+          )}
         </TouchableOpacity>
 
-        {/* Footer */}
+        {/* Footer / Back Button */}
         <TouchableOpacity
           onPress={() => router.back()}
           activeOpacity={0.7}

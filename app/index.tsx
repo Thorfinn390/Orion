@@ -11,6 +11,7 @@ export default function Index() {
     async function checkAuth() {
       try {
         const token = await SecureStore.getItemAsync("userToken");
+
         console.log(token);
 
         //implement refresh token api call later

@@ -1,5 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
-import { useRouter } from "expo-router";
+import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -12,11 +12,15 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const OTP_LENGTH = 6;
 
 export default function ForgotPasswordStep3() {
   const router = useRouter();
+  const { email } = useLocalSearchParams();
+  const [loading, setLoading] = useState(false);
+
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -228,7 +232,41 @@ export default function ForgotPasswordStep3() {
 
             {/* CTA */}
             <TouchableOpacity
-              onPress={() => router.replace("/(auth)/login")}
+              onPress={async () => {
+                const otpString = otp.join("");
+
+                const result = await fetch(
+                  `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/pass-reset`,
+                  {
+                    method: "POST",
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({
+                      email,
+                      password: confirmPassword,
+                      otp: otpString,
+                    }),
+                  },
+                );
+
+                if (result.status === 201) {
+                  Toast.show({
+                    type: "success",
+                    text1: "Password Reset",
+                    text2: "Your password has been updated successfully.",
+                    onHide: () => router.replace("/(auth)/login"),
+                  });
+                } else {
+                  const errorData = await result.json();
+                  Toast.show({
+                    type: "error",
+                    text1: "Reset Failed",
+                    text2:
+                      errorData.message || "Invalid OTP or request expired.",
+                  });
+                }
+              }}
               activeOpacity={canSubmit ? 0.9 : 1}
               disabled={!canSubmit}
               className="rounded-lg py-md items-center justify-center flex-row gap-sm"

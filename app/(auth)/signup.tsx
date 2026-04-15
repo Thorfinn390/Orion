@@ -185,6 +185,7 @@ export default function SignUpScreen() {
             params: {
               contactMethod:
                 contactMethod === "email" ? data.email : data.phone,
+              password,
             },
           });
         } else {
