@@ -88,7 +88,7 @@ const FloatingAIButton = () => {
       >
         <MotiView
           animate={{ rotate: isOpen ? "135deg" : "0deg" }}
-          transition={{ type: "spring", damping: 15 }}
+          transition={{ type: "timing" }}
         >
           <Ionicons
             name={isOpen ? "add" : "sparkles"}
