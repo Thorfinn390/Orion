@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { useAudioPlayer } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { router, usePathname } from "expo-router";
+import { useSpeechRecognitionEvent } from "expo-speech-recognition";
 
 import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
@@ -9,14 +10,32 @@ import { StyleSheet, TouchableOpacity, View } from "react-native";
 
 const navAiAudio = require("../../assets/audio/AINavigation.mp3");
 
-const FloatingAIButton = () => {
+const FloatingAIButton = ({
+  handleStart,
+  startSpeechIndicator,
+  getNewTranscript,
+}: {
+  handleStart: any;
+  startSpeechIndicator: (indicate: boolean) => void;
+  getNewTranscript: (event: any) => void;
+}) => {
   const [isOpen, setIsOpen] = useState(false);
   const player = useAudioPlayer(navAiAudio);
   const pathname = usePathname();
 
+  const [isPressed, setIsPressed] = useState(false);
+
+  useSpeechRecognitionEvent("start", () => startSpeechIndicator(true));
+  useSpeechRecognitionEvent("end", () => startSpeechIndicator(false));
+  useSpeechRecognitionEvent("result", getNewTranscript);
+  useSpeechRecognitionEvent("error", (event) => {
+    console.log("error code:", event.error, "error message:", event.message);
+  });
+
   const isLibraryPage = pathname.includes("InformationZone");
 
   const toggleMenu = () => {
+    // console.log(transcript);
     try {
       setIsOpen(!isOpen);
     } catch (e) {
@@ -82,6 +101,13 @@ const FloatingAIButton = () => {
       {/* --- MAIN TRIGGER BUTTON --- */}
       <TouchableOpacity
         onPress={toggleMenu}
+        onLongPress={() => {
+          player.seekTo(0);
+          player.play();
+          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+
+          handleStart();
+        }}
         activeOpacity={0.85}
         className="w-[72px] h-[72px] rounded-2xl items-center justify-center bg-nova"
         style={styles.mainShadow}
