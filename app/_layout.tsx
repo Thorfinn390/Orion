@@ -2,6 +2,7 @@ import FloatingAIButton from "@/components/AI/FloatingAIButton";
 import { BlurView } from "expo-blur";
 import { router, Stack } from "expo-router";
 import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
+import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import "react-native-gesture-handler";
@@ -11,7 +12,6 @@ import Toast from "react-native-toast-message";
 import "./globals.css";
 
 export default function RootLayout() {
-  // useEffect(() => {});
   const [recognizing, setRecognizing] = useState(false);
   const [canRecord, setCanRecord] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -19,7 +19,7 @@ export default function RootLayout() {
   const handleStart = async () => {
     if (canRecord) {
       console.log("listening");
-      //start the speech recognition here
+
       ExpoSpeechRecognitionModule.start({
         lang: "en-US",
         interimResults: true,
@@ -35,14 +35,12 @@ export default function RootLayout() {
       if (transcript === "navigate to home") {
         router.push("/(tabs)");
       }
+      setTranscript("");
     }
-
-    setTranscript("");
   };
 
   const getNewTranscript = (event: any) => {
     const text = event.results.map((r: any) => r.transcript).join("");
-
     setTranscript(text);
   };
 
@@ -52,7 +50,6 @@ export default function RootLayout() {
         await ExpoSpeechRecognitionModule.requestPermissionsAsync();
 
       if (!result.granted) {
-        console.warn("Permissions not granted", result);
         setCanRecord(false);
         return;
       }
@@ -63,47 +60,73 @@ export default function RootLayout() {
     audioPermissions();
   }, []);
 
-  useEffect(() => {
-    console.log(canRecord);
-  }, [canRecord]);
-
   return (
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }} />
 
       <FloatingAIButton
         handleStart={handleStart}
-        startSpeechIndicator={handleSpeechIndicator}
+        startSpeechIndicator={setRecognizing}
         getNewTranscript={getNewTranscript}
       />
 
       <Toast />
-      {recognizing && (
-        <BlurView
-          style={styles.blurOverlay}
-          intensity={40}
-          tint="dark"
-          experimentalBlurMethod="dimezisBlurView"
-        >
-          {/* <View> */}
-          <Text className="text-center m-auto text-2xl font-extrabold text-wrap text-primary">
-            {transcript}
-          </Text>
-          {/* </View> */}
-        </BlurView>
-      )}
+
+      <MotiView
+        pointerEvents={recognizing ? "auto" : "none"}
+        animate={{
+          opacity: recognizing ? 1 : 0,
+          scale: recognizing ? 1 : 0.9,
+        }}
+        transition={{
+          type: "timing",
+          duration: 200,
+        }}
+        style={styles.overlayWrapper}
+      >
+        {recognizing && (
+          <BlurView
+            style={styles.blurOverlay}
+            intensity={40}
+            tint="dark"
+            experimentalBlurMethod="dimezisBlurView"
+          >
+            <Text style={styles.text}>{transcript}</Text>
+          </BlurView>
+        )}
+      </MotiView>
     </SafeAreaProvider>
   );
 }
 
 const styles = StyleSheet.create({
+  overlayWrapper: {
+    ...StyleSheet.absoluteFillObject,
+
+    // shadow (iOS)
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.3,
+    shadowRadius: 20,
+
+    // Android
+    elevation: 15,
+  },
+
   blurOverlay: {
-    position: "absolute",
-    top: 0,
-    bottom: 0,
-    right: 0,
-    left: 0,
-    paddingLeft: 20,
-    paddingRight: 20,
+    flex: 1,
+    margin: 2,
+    borderRadius: 24,
+    overflow: "hidden",
+    paddingHorizontal: 20,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+
+  text: {
+    textAlign: "center",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#fff",
   },
 });
