@@ -27,7 +27,7 @@ export default function RootLayout() {
       });
     }
   };
-
+  //comment
   const handleSpeechIndicator = (indicate: boolean) => {
     setRecognizing(indicate);
 
