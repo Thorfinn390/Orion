@@ -1,6 +1,6 @@
 import FloatingAIButton from "@/components/AI/FloatingAIButton";
 import { BlurView } from "expo-blur";
-import { router, Stack } from "expo-router";
+import { router, Stack, usePathname } from "expo-router";
 import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
 import { MotiView } from "moti";
 import { useEffect, useState } from "react";
@@ -12,6 +12,7 @@ import Toast from "react-native-toast-message";
 import "./globals.css";
 
 export default function RootLayout() {
+  const pathname = usePathname();
   const [recognizing, setRecognizing] = useState(false);
   const [canRecord, setCanRecord] = useState(false);
   const [transcript, setTranscript] = useState("");
@@ -64,11 +65,13 @@ export default function RootLayout() {
     <SafeAreaProvider>
       <Stack screenOptions={{ headerShown: false }} />
 
-      <FloatingAIButton
-        handleStart={handleStart}
-        startSpeechIndicator={setRecognizing}
-        getNewTranscript={getNewTranscript}
-      />
+      {!pathname.includes("(auth)") && (
+        <FloatingAIButton
+          handleStart={handleStart}
+          startSpeechIndicator={setRecognizing}
+          getNewTranscript={getNewTranscript}
+        />
+      )}
 
       <Toast />
 
