@@ -40,17 +40,6 @@ const ChatSideBar = ({
     >
       {/* --- TOP ACTION BAR --- */}
       <View className="px-md pt-xl pb-md flex-row items-center gap-sm">
-        {/* BACK BUTTON */}
-        <TouchableOpacity
-          onPress={() => {
-            changeSideBarStatus(false);
-          }}
-          activeOpacity={0.7}
-          className="w-10 h-10 rounded-full bg-activeflight items-center justify-center"
-        >
-          <Ionicons name="menu-outline" size={24} color="#fff" />
-        </TouchableOpacity>
-
         {/* NEW CHAT BUTTON */}
         <TouchableOpacity
           onPress={handleNewChat}

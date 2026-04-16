@@ -1,5 +1,6 @@
+import { useAuthStore } from "@/stores/useAuthStore";
 import { router } from "expo-router";
-import { ChevronLeft, Mail, MapPin, Phone, User } from "lucide-react-native";
+import { ChevronLeft, Mail, MapPin, User } from "lucide-react-native";
 import React, { memo, useCallback, useState } from "react";
 import {
   KeyboardAvoidingView,
@@ -11,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const InfoField = memo(
   ({ label, value, icon: Icon, isEditable = true, onChangeText }: any) => {
@@ -57,24 +59,81 @@ const InfoField = memo(
 
 InfoField.displayName = "InfoField";
 
-// --- MAIN SCREEN ---
-
 export default function PersonalInformationScreen() {
+  const storeFullName = useAuthStore((state) => state.fullName);
+  const storeEmail = useAuthStore((state) => state.email);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const setFullName = useAuthStore((state) => state.setFullName);
+
   const [formData, setFormData] = useState({
-    fullName: "Alex Smith",
-    email: "alex.smith@example.com",
-    phone: "+961 70 000 000",
+    fullName: storeFullName || "",
+    email: storeEmail || "",
     location: "Beirut, Lebanon",
   });
+
+  const [loading, setLoading] = useState(false);
 
   const handleUpdate = useCallback((key: string, value: string) => {
     setFormData((prev) => ({ ...prev, [key]: value }));
   }, []);
 
-  const handleSave = () => {
-    console.log("Saving to OrionBackend:", formData);
-    // Add your API logic here
-    router.back();
+  const handleSave = async () => {
+    if (loading) return;
+
+    if (!formData.fullName.trim()) {
+      Toast.show({
+        type: "error",
+        text1: "Required Field",
+        text2: "Name cannot be empty.",
+      });
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/user/change-name`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${accessToken}`,
+          },
+          body: JSON.stringify({
+            fullName: formData.fullName,
+          }),
+        },
+      );
+
+      const result = await response.json();
+
+      if (response.status === 200 || response.status === 201) {
+        await setFullName(formData.fullName);
+
+        Toast.show({
+          type: "success",
+          text1: "Profile Updated",
+          text2: "Your information was saved successfully.",
+        });
+
+        router.back();
+      } else {
+        Toast.show({
+          type: "error",
+          text1: "Update Failed",
+          text2: result.message || "Something went wrong",
+        });
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Network Error",
+        text2: "Could not connect to the server.",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -83,7 +142,6 @@ export default function PersonalInformationScreen() {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        {/* Header Navigation */}
         <View className="px-md py-sm flex-row items-center justify-between">
           <TouchableOpacity
             onPress={() => router.back()}
@@ -93,11 +151,16 @@ export default function PersonalInformationScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity
-            className="bg-navtab px-lg py-sm rounded-full shadow-lg active:opacity-80"
+            className={`bg-primaryBrand px-lg py-sm rounded-full shadow-lg ${
+              loading || formData.fullName === storeFullName
+                ? "opacity-50"
+                : "active:opacity-80"
+            }`}
             onPress={handleSave}
+            disabled={loading || formData.fullName === storeFullName}
           >
             <Text className="text-white font-black text-sm uppercase tracking-wider">
-              Save
+              {loading ? "Saving..." : "Save"}
             </Text>
           </TouchableOpacity>
         </View>
@@ -110,11 +173,9 @@ export default function PersonalInformationScreen() {
             paddingBottom: 40,
           }}
         >
-          {/* Avatar Section */}
           <View className="items-center mb-2xl">
             <View className="relative">
-              {/* Unique Awwwards Style: Tilted Squircle */}
-              <View className="w-32 h-32 rounded-[40px] bg-nova items-center justify-center shadow-2xl rotate-3">
+              <View className="w-32 h-32 rounded-[40px] bg-primaryBrand items-center justify-center shadow-2xl rotate-3">
                 <View className="-rotate-3 flex items-center justify-center">
                   <User size={50} color="#FFFFFF" strokeWidth={1.5} />
                 </View>
@@ -128,7 +189,6 @@ export default function PersonalInformationScreen() {
             </Text>
           </View>
 
-          {/* Form Fields using Memoized Component */}
           <InfoField
             label="Full Name"
             value={formData.fullName}
@@ -141,13 +201,6 @@ export default function PersonalInformationScreen() {
             value={formData.email}
             icon={Mail}
             isEditable={false}
-          />
-
-          <InfoField
-            label="Phone Number"
-            value={formData.phone}
-            icon={Phone}
-            onChangeText={(t: string) => handleUpdate("phone", t)}
           />
 
           <InfoField

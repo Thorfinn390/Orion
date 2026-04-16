@@ -7,6 +7,7 @@ import React, { useState } from "react";
 import {
   KeyboardAvoidingView,
   Platform,
+  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -32,7 +33,7 @@ const LLM = () => {
       <MotiView
         animate={{ translateX: chatsOpened ? 0 : -300 }}
         transition={{ type: "timing", duration: 200 }}
-        className="z-10 absolute top-0 bottom-0 left-0"
+        className="z-20 absolute top-0 bottom-0 left-0"
         style={{
           paddingTop: insets.top,
           paddingBottom: insets.bottom,
@@ -149,12 +150,19 @@ const LLM = () => {
       </KeyboardAvoidingView>
 
       {chatsOpened && (
-        <BlurView
-          style={styles.blurOverlay}
-          intensity={40}
-          tint="dark"
-          experimentalBlurMethod="dimezisBlurView"
-        />
+        <View style={StyleSheet.absoluteFill} className="z-10">
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={() => setChatsOpened(false)}
+          >
+            <BlurView
+              style={StyleSheet.absoluteFill}
+              intensity={40}
+              tint="dark"
+              experimentalBlurMethod="dimezisBlurView"
+            />
+          </Pressable>
+        </View>
       )}
     </SafeAreaView>
   );

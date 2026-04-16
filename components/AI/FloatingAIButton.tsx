@@ -3,7 +3,6 @@ import { useAudioPlayer } from "expo-audio";
 import * as Haptics from "expo-haptics";
 import { router, usePathname } from "expo-router";
 import { useSpeechRecognitionEvent } from "expo-speech-recognition";
-
 import { MotiView } from "moti";
 import React, { useEffect, useState } from "react";
 import { StyleSheet, TouchableOpacity, View } from "react-native";
@@ -44,7 +43,6 @@ const FloatingAIButton = ({
     pathname.includes("index");
 
   const toggleMenu = () => {
-    // console.log(transcript);
     try {
       setIsOpen(!isOpen);
     } catch (e) {
@@ -62,13 +60,12 @@ const FloatingAIButton = ({
 
   return (
     <View className="absolute bottom-[17%] right-8 z-50 items-center justify-center">
-      {/* --- LIBRARY BUTTON --- */}
       {!isLibraryPage && (
         <MotiView
           animate={{
-            translateY: isOpen ? -160 : 0,
+            translateY: isOpen ? -150 : 0,
             opacity: isOpen ? 1 : 0,
-            scale: isOpen ? 1 : 0,
+            scale: isOpen ? 1 : 0.5,
           }}
           transition={{ type: "timing", duration: 250 }}
           pointerEvents={isOpen ? "auto" : "none"}
@@ -80,20 +77,19 @@ const FloatingAIButton = ({
               router.push("/(nova)/InformationZone");
             }}
             activeOpacity={0.9}
-            className="w-16 h-16 rounded-2xl items-center justify-center bg-surface border border-borderEmphasis shadow-sm"
+            className="w-14 h-14 rounded-full items-center justify-center bg-white border border-borderDefault shadow-sm"
           >
-            <Ionicons name="library" size={26} color="#7B5FE8" />
+            <Ionicons name="library" size={22} color="#1568C4" />
           </TouchableOpacity>
         </MotiView>
       )}
 
-      {/* --- CHAT MODE BUTTON --- */}
       {!isLLMPage && (
         <MotiView
           animate={{
             translateY: isOpen ? -80 : 0,
             opacity: isOpen ? 1 : 0,
-            scale: isOpen ? 1 : 0,
+            scale: isOpen ? 1 : 0.5,
           }}
           transition={{ type: "timing", duration: 250 }}
           style={styles.secondaryButtonPosition}
@@ -104,15 +100,14 @@ const FloatingAIButton = ({
               router.push("/(nova)/LLM");
             }}
             activeOpacity={0.9}
-            className="w-16 h-16 rounded-2xl items-center justify-center bg-surface border border-borderEmphasis"
+            className="w-14 h-14 rounded-full items-center justify-center bg-white border border-borderDefault"
             style={styles.secondaryShadow}
           >
-            <Ionicons name="chatbubbles" size={26} color="#5BACF5" />
+            <Ionicons name="chatbubbles" size={22} color="#1568C4" />
           </TouchableOpacity>
         </MotiView>
       )}
 
-      {/* --- MAIN TRIGGER BUTTON --- */}
       {shouldShowButton && (
         <TouchableOpacity
           onPress={toggleMenu}
@@ -120,11 +115,10 @@ const FloatingAIButton = ({
             player.seekTo(0);
             player.play();
             Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
-
             handleStart();
           }}
           activeOpacity={0.85}
-          className="w-[72px] h-[72px] rounded-2xl items-center justify-center bg-nova"
+          className="w-[68px] h-[68px] rounded-2xl items-center justify-center bg-primaryBrand"
           style={styles.mainShadow}
         >
           <MotiView
@@ -133,7 +127,7 @@ const FloatingAIButton = ({
           >
             <Ionicons
               name={isOpen ? "add" : "sparkles"}
-              size={32}
+              size={30}
               color="#FFFFFF"
             />
           </MotiView>
@@ -145,18 +139,18 @@ const FloatingAIButton = ({
 
 const styles = StyleSheet.create({
   mainShadow: {
-    shadowColor: "#7B5FE8",
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 12,
+    shadowColor: "#0D1A3A",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   secondaryShadow: {
-    shadowColor: "#0D1A3A",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    elevation: 6,
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 4,
   },
   secondaryButtonPosition: {
     position: "absolute",

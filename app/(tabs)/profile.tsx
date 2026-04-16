@@ -1,5 +1,5 @@
+import { useAuthStore } from "@/stores/useAuthStore";
 import { router } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import {
   ChevronRight,
   FileText,
@@ -64,13 +64,15 @@ const SettingItem = React.memo(
 
 SettingItem.displayName = "SettingItem";
 
-// --- MAIN SCREEN ---
-
 export default function ProfileScreen() {
-  const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [loading, setLoading] = useState(false);
 
-  // Stable navigation callbacks
+  // Pull data and logout action from AuthStore
+  const fullName = useAuthStore((state) => state.fullName);
+  const email = useAuthStore((state) => state.email);
+  const accessToken = useAuthStore((state) => state.accessToken);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+
   const goToSecurity = useCallback(
     () => router.push("/(profile)/securityAndPassword"),
     [],
@@ -80,14 +82,10 @@ export default function ProfileScreen() {
     [],
   );
 
-  // const handleToggleNotifications = useCallback((val: boolean) => {
-  //   setNotificationsEnabled(val);
-  // }, []);
-
   const handleLogout = async () => {
     try {
       setLoading(true);
-      const accessToken = await SecureStore.getItemAsync("userToken");
+
       const response = await fetch(
         `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/logout`,
         {
@@ -99,15 +97,15 @@ export default function ProfileScreen() {
         },
       );
 
-      if (response.status === 200) {
-        await Promise.all([
-          SecureStore.deleteItemAsync("userToken"),
-          SecureStore.deleteItemAsync("refreshToken"),
-        ]);
+      // We clear the store locally regardless of whether the server GET request
+      // succeeded perfectly, to ensure the user isn't "stuck" logged in.
+      if (response.status === 200 || response.status === 201) {
+        await clearAuth();
         Toast.show({ type: "success", text1: "Logged out successfully" });
         router.replace("/(auth)/login");
       }
     } catch (e) {
+      console.warn(e);
       Toast.show({ type: "error", text1: "Error logging you out" });
     } finally {
       setLoading(false);
@@ -121,7 +119,6 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: 20, paddingBottom: 60 }}
       >
-        {/* Editorial Style Header */}
         <View className="mb-xl px-1">
           <Text className="text-[12px] font-black text-meta uppercase tracking-[3px] mb-1">
             Account
@@ -131,13 +128,12 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
-        {/* Hero Profile Card */}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={goToPersonal}
           className="bg-white p-lg rounded-[32px] shadow-card border border-borderDefault flex-row items-center mb-2xl"
         >
-          <View className="w-20 h-20 bg-nova rounded-[24px] flex items-center justify-center shadow-lg rotate-2">
+          <View className="w-20 h-20 bg-primaryBrand rounded-[24px] flex items-center justify-center shadow-lg rotate-2">
             <View className="-rotate-2">
               <User size={40} color="#FFFFFF" strokeWidth={1.5} />
             </View>
@@ -145,15 +141,14 @@ export default function ProfileScreen() {
 
           <View className="flex-1 ml-lg">
             <Text className="text-2xl font-black text-primary tracking-tight">
-              Alex Smith
+              {fullName || "User Name"}
             </Text>
             <Text className="text-sm font-medium text-meta">
-              alex.smith@bau.edu.lb
+              {email || "email@example.com"}
             </Text>
           </View>
         </TouchableOpacity>
 
-        {/* Account Section */}
         <Text className="text-xs font-black text-meta uppercase tracking-[2px] mb-md ml-1">
           Preferences
         </Text>
@@ -168,17 +163,8 @@ export default function ProfileScreen() {
             label="Security & Password"
             onPress={goToSecurity}
           />
-          {/* <SettingItem
-            icon={Bell}
-            label="Notifications"
-            hasSwitch={true}
-            value={notificationsEnabled}
-            onValueChange={handleToggleNotifications}
-            isLast={true}
-          /> */}
         </View>
 
-        {/* Support Section */}
         <Text className="text-xs font-black text-meta uppercase tracking-[2px] mb-md ml-1">
           Support
         </Text>
@@ -196,19 +182,18 @@ export default function ProfileScreen() {
           />
         </View>
 
-        {/* Minimalist Logout */}
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
           activeOpacity={0.7}
-          className="flex-row items-center justify-center py-lg bg-white border border-statusUL/10 rounded-[24px] shadow-sm"
+          className="flex-row items-center justify-center py-lg bg-white border border-red-500/10 rounded-[24px] shadow-sm"
         >
           {loading ? (
             <ActivityIndicator size="small" color="#C84B4B" />
           ) : (
             <>
               <LogOut size={20} color="#C84B4B" strokeWidth={2.5} />
-              <Text className="text-statusUL font-black text-base ml-sm uppercase tracking-wider">
+              <Text className="text-red-600 font-black text-base ml-sm uppercase tracking-wider">
                 Sign Out
               </Text>
             </>

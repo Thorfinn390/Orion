@@ -1,6 +1,6 @@
+import { useAuthStore } from "@/stores/useAuthStore";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -38,6 +38,9 @@ export default function LoginScreen() {
   const [isPasswordValid, setIsPasswordValid] = useState(false);
 
   const [loading, setLoading] = useState(false);
+
+  // Extract the bulk setter from our store
+  const setAuth = useAuthStore((state) => state.setAuth);
 
   useEffect(() => {
     validateIdentifier(identifier);
@@ -108,11 +111,7 @@ export default function LoginScreen() {
   const handleSignIn = async () => {
     if (isIdentifierValid && isPasswordValid) {
       setLoading(true);
-      const userObject: {
-        email: string | null;
-        phone: string | null;
-        password: string;
-      } = {
+      const userObject = {
         password,
         email: authMethod === "email" ? identifier : null,
         phone: authMethod === "phone" ? identifier : null,
@@ -131,16 +130,17 @@ export default function LoginScreen() {
         );
 
         const result = await response.json();
-        console.log(result);
+
         if (response.status === 201) {
-          await SecureStore.setItemAsync("userToken", result.accessToken);
-          await SecureStore.setItemAsync("refreshToken", result.refreshToken);
+          // Use the bulk setter to update Zustand and SecureStore
+          await setAuth(result);
 
           Toast.show({
             type: "success",
-            text1: `Hey ${result?.data?.fullName || "there"}👋`,
+            text1: `Hey ${result.fullName || "there"}👋`,
             visibilityTime: 2000,
           });
+
           router.push("/(tabs)/profile");
         } else {
           Toast.show({
@@ -339,7 +339,7 @@ export default function LoginScreen() {
 
             <TouchableOpacity
               onPress={handleSignIn}
-              disabled={!isIdentifierValid || !isPasswordValid}
+              disabled={!isIdentifierValid || !isPasswordValid || loading}
               activeOpacity={0.9}
               className={`rounded-lg py-md items-center justify-center mb-xl ${
                 isIdentifierValid && isPasswordValid
@@ -348,7 +348,7 @@ export default function LoginScreen() {
               }`}
             >
               {loading ? (
-                <ActivityIndicator size="small" />
+                <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
                 <Text className="text-white font-bold text-base">Sign In</Text>
               )}
