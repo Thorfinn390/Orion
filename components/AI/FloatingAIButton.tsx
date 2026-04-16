@@ -23,16 +23,25 @@ const FloatingAIButton = ({
   const player = useAudioPlayer(navAiAudio);
   const pathname = usePathname();
 
-  const [isPressed, setIsPressed] = useState(false);
-
   useSpeechRecognitionEvent("start", () => startSpeechIndicator(true));
-  useSpeechRecognitionEvent("end", () => startSpeechIndicator(false));
+  useSpeechRecognitionEvent("end", () => {
+    setTimeout(() => {
+      startSpeechIndicator(false);
+    }, 1000);
+  });
   useSpeechRecognitionEvent("result", getNewTranscript);
   useSpeechRecognitionEvent("error", (event) => {
     console.log("error code:", event.error, "error message:", event.message);
   });
 
   const isLibraryPage = pathname.includes("InformationZone");
+  const isLLMPage = pathname.includes("LLM");
+
+  const shouldShowButton =
+    pathname.includes("profile") ||
+    pathname.includes("map") ||
+    pathname === "/" ||
+    pathname.includes("index");
 
   const toggleMenu = () => {
     // console.log(transcript);
@@ -79,50 +88,57 @@ const FloatingAIButton = ({
       )}
 
       {/* --- CHAT MODE BUTTON --- */}
-      <MotiView
-        animate={{
-          translateY: isOpen ? -80 : 0,
-          opacity: isOpen ? 1 : 0,
-          scale: isOpen ? 1 : 0,
-        }}
-        transition={{ type: "timing", duration: 250 }}
-        style={styles.secondaryButtonPosition}
-      >
-        <TouchableOpacity
-          //   onPress={onChatPress}
-          activeOpacity={0.9}
-          className="w-16 h-16 rounded-2xl items-center justify-center bg-surface border border-borderEmphasis"
-          style={styles.secondaryShadow}
+      {!isLLMPage && (
+        <MotiView
+          animate={{
+            translateY: isOpen ? -80 : 0,
+            opacity: isOpen ? 1 : 0,
+            scale: isOpen ? 1 : 0,
+          }}
+          transition={{ type: "timing", duration: 250 }}
+          style={styles.secondaryButtonPosition}
         >
-          <Ionicons name="chatbubbles" size={26} color="#5BACF5" />
-        </TouchableOpacity>
-      </MotiView>
+          <TouchableOpacity
+            onPress={() => {
+              setIsOpen(false);
+              router.push("/(nova)/LLM");
+            }}
+            activeOpacity={0.9}
+            className="w-16 h-16 rounded-2xl items-center justify-center bg-surface border border-borderEmphasis"
+            style={styles.secondaryShadow}
+          >
+            <Ionicons name="chatbubbles" size={26} color="#5BACF5" />
+          </TouchableOpacity>
+        </MotiView>
+      )}
 
       {/* --- MAIN TRIGGER BUTTON --- */}
-      <TouchableOpacity
-        onPress={toggleMenu}
-        onLongPress={() => {
-          player.seekTo(0);
-          player.play();
-          Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
+      {shouldShowButton && (
+        <TouchableOpacity
+          onPress={toggleMenu}
+          onLongPress={() => {
+            player.seekTo(0);
+            player.play();
+            Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Heavy);
 
-          handleStart();
-        }}
-        activeOpacity={0.85}
-        className="w-[72px] h-[72px] rounded-2xl items-center justify-center bg-nova"
-        style={styles.mainShadow}
-      >
-        <MotiView
-          animate={{ rotate: isOpen ? "135deg" : "0deg" }}
-          transition={{ type: "timing" }}
+            handleStart();
+          }}
+          activeOpacity={0.85}
+          className="w-[72px] h-[72px] rounded-2xl items-center justify-center bg-nova"
+          style={styles.mainShadow}
         >
-          <Ionicons
-            name={isOpen ? "add" : "sparkles"}
-            size={32}
-            color="#FFFFFF"
-          />
-        </MotiView>
-      </TouchableOpacity>
+          <MotiView
+            animate={{ rotate: isOpen ? "135deg" : "0deg" }}
+            transition={{ type: "timing" }}
+          >
+            <Ionicons
+              name={isOpen ? "add" : "sparkles"}
+              size={32}
+              color="#FFFFFF"
+            />
+          </MotiView>
+        </TouchableOpacity>
+      )}
     </View>
   );
 };

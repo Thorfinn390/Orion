@@ -68,7 +68,7 @@ export default function RootLayout() {
       {!pathname.includes("(auth)") && (
         <FloatingAIButton
           handleStart={handleStart}
-          startSpeechIndicator={setRecognizing}
+          startSpeechIndicator={handleSpeechIndicator}
           getNewTranscript={getNewTranscript}
         />
       )}
