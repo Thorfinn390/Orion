@@ -1,6 +1,7 @@
+import { useAuthStore } from "@/stores/useAuthStore";
+import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
-import * as SecureStore from "expo-secure-store";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -24,6 +25,11 @@ export default function OTPScreen() {
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
   const [isResending, setIsResending] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
+
+  const [loading, setLoading] = useState(false);
+
+  const setAuth = useAuthStore((state) => state.setAuth);
+  const setIsLoggedIn = useAuthStore((state) => state.setIsLoggedIn);
 
   useEffect(() => {
     if (seconds === 0) return;
@@ -61,16 +67,10 @@ export default function OTPScreen() {
 
     setIsResending(true);
     try {
-      const response = await fetch(
-        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/resend-otp`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email: contactMethod }),
-        },
-      );
+      const response = await apiFetch("/auth/resend-otp", {
+        method: "POST",
+        body: JSON.stringify({ email: contactMethod }),
+      });
 
       const data = await response.json();
 
@@ -98,6 +98,7 @@ export default function OTPScreen() {
 
   const handleConfirm = async () => {
     try {
+      setLoading(true);
       const otpString = otp.join("");
 
       if (otpString.length !== OTP_LENGTH) {
@@ -109,81 +110,73 @@ export default function OTPScreen() {
         return;
       }
 
-      const response = await fetch(
-        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/verify-email`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            email: contactMethod,
-            otp: otpString,
-          }),
-        },
-      );
+      const verifyRes = await apiFetch("/auth/verify-email", {
+        method: "POST",
+        body: JSON.stringify({ email: contactMethod, otp: otpString }),
+      });
 
-      const data = await response.json();
+      const verifyData = await verifyRes.json();
 
-      if (response.ok) {
+      if (!verifyRes.ok) {
+        Toast.show({
+          type: "error",
+          text1: "Verification Failed",
+          text2: verifyData.error || "The code you entered is incorrect.",
+        });
+        return;
+      }
+
+      const loginRes = await apiFetch("/auth/login", {
+        method: "POST",
+        body: JSON.stringify({
+          email: contactMethod,
+          phone: null,
+          password,
+        }),
+      });
+
+      const loginData = await loginRes.json();
+
+      if (loginRes.status === 201) {
+        await setAuth({
+          fullName: loginData.fullName,
+          email: loginData.email,
+          is_email_verified: loginData.is_email_verified,
+          is_2fa_enabled: loginData.is_2fa_enabled,
+          accessToken: loginData.accessToken,
+          refreshToken: loginData.refreshToken,
+          userId: loginData.userId,
+        });
+
+        setIsLoggedIn(true);
+
         Toast.show({
           type: "success",
           text1: "Success",
           text2: "Email verified successfully! 👋",
-        });
-
-        await fetch(
-          `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/login`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              email: contactMethod,
-              phone: null,
-              password, //zustand update later when u use zustand
-            }),
+          autoHide: true,
+          visibilityTime: 1000,
+          onHide: () => {
+            router.replace("/(tabs)/profile");
           },
-        )
-          .then((res) => {
-            if (res.status !== 201) {
-              throw new Error("Error in automatic log in");
-            }
-
-            return res.json();
-          })
-          .then(async (data) => {
-            await SecureStore.setItemAsync("userToken", data.accessToken);
-            await SecureStore.setItemAsync("refreshToken", data.refreshToken);
-
-            Toast.show({
-              type: "success",
-              autoHide: true,
-              visibilityTime: 300,
-              onHide: () => {
-                router.replace("/(tabs)/profile");
-              },
-            });
-          });
-      } else {
-        Toast.show({
-          type: "error",
-          text1: "Verification Failed",
-          text2: data.error || "The code you entered is incorrect.",
         });
+      } else {
+        throw new Error("Login failed after verification");
       }
     } catch (error) {
+      console.error(error);
       Toast.show({
         type: "error",
-        text1: "Connection Error",
-        text2: "Could not reach the server.",
+        text1: "Error",
+        text2: "An unexpected error occurred. Please try again.",
       });
+    } finally {
+      setLoading(false);
     }
   };
 
   const isComplete = otp.every((d) => d !== "");
-  const canResend = seconds === 0 && !isResending;
+  const canResend = true;
 
   return (
     <SafeAreaView className="flex-1 bg-surface">

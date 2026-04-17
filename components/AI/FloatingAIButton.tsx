@@ -40,7 +40,8 @@ const FloatingAIButton = ({
     pathname.includes("profile") ||
     pathname.includes("map") ||
     pathname === "/" ||
-    pathname.includes("index");
+    pathname.includes("index") ||
+    pathname.includes("(tabs)");
 
   const toggleMenu = () => {
     try {
@@ -77,7 +78,8 @@ const FloatingAIButton = ({
               router.push("/(nova)/InformationZone");
             }}
             activeOpacity={0.9}
-            className="w-14 h-14 rounded-full items-center justify-center bg-white border border-borderDefault shadow-sm"
+            className="w-14 h-14 rounded-full items-center justify-center bg-white border border-borderDefault"
+            style={styles.secondaryShadow}
           >
             <Ionicons name="library" size={22} color="#1568C4" />
           </TouchableOpacity>

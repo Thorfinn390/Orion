@@ -19,8 +19,7 @@ export default function RootLayout() {
 
   const handleStart = async () => {
     if (canRecord) {
-      console.log("listening");
-
+      setTranscript("");
       ExpoSpeechRecognitionModule.start({
         lang: "en-US",
         interimResults: true,
@@ -28,13 +27,19 @@ export default function RootLayout() {
       });
     }
   };
-  //comment
+
   const handleSpeechIndicator = (indicate: boolean) => {
     setRecognizing(indicate);
 
     if (!indicate) {
-      if (transcript === "navigate to home") {
+      const cleanTranscript = transcript.toLowerCase().trim();
+
+      if (cleanTranscript.includes("navigate to home")) {
         router.push("/(tabs)");
+      } else if (cleanTranscript.includes("navigate to chat")) {
+        router.push("/(nova)/LLM");
+      } else if (cleanTranscript.includes("go back")) {
+        router.back();
       }
       setTranscript("");
     }
@@ -54,7 +59,6 @@ export default function RootLayout() {
         setCanRecord(false);
         return;
       }
-
       setCanRecord(true);
     }
 
@@ -105,17 +109,12 @@ export default function RootLayout() {
 const styles = StyleSheet.create({
   overlayWrapper: {
     ...StyleSheet.absoluteFillObject,
-
-    // shadow (iOS)
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 10 },
     shadowOpacity: 0.3,
     shadowRadius: 20,
-
-    // Android
     elevation: 15,
   },
-
   blurOverlay: {
     flex: 1,
     margin: 2,
@@ -125,7 +124,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-
   text: {
     textAlign: "center",
     fontSize: 20,

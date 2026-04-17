@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
+import { apiFetch } from "@/utils/apiFetch";
 import { router } from "expo-router";
 import { ChevronLeft, Mail, MapPin, User } from "lucide-react-native";
 import React, { memo, useCallback, useState } from "react";
@@ -92,19 +93,12 @@ export default function PersonalInformationScreen() {
     setLoading(true);
 
     try {
-      const response = await fetch(
-        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/user/change-name`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${accessToken}`,
-          },
-          body: JSON.stringify({
-            fullName: formData.fullName,
-          }),
-        },
-      );
+      const response = await apiFetch("/user/change-name", {
+        method: "PATCH",
+        body: JSON.stringify({
+          fullName: formData.fullName,
+        }),
+      });
 
       const result = await response.json();
 
@@ -115,6 +109,8 @@ export default function PersonalInformationScreen() {
           type: "success",
           text1: "Profile Updated",
           text2: "Your information was saved successfully.",
+          autoHide: true,
+          visibilityTime: 2000,
         });
 
         router.back();

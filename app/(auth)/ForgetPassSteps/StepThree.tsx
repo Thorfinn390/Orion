@@ -1,3 +1,4 @@
+import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useRef, useState } from "react";
@@ -235,20 +236,14 @@ export default function ForgotPasswordStep3() {
               onPress={async () => {
                 const otpString = otp.join("");
 
-                const result = await fetch(
-                  `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/pass-reset`,
-                  {
-                    method: "POST",
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                    body: JSON.stringify({
-                      email,
-                      password: confirmPassword,
-                      otp: otpString,
-                    }),
-                  },
-                );
+                const result = await apiFetch("/auth/pass-reset", {
+                  method: "POST",
+                  body: JSON.stringify({
+                    email,
+                    password: confirmPassword,
+                    otp: otpString,
+                  }),
+                });
 
                 if (result.status === 201) {
                   Toast.show({
@@ -256,6 +251,7 @@ export default function ForgotPasswordStep3() {
                     text1: "Password Reset",
                     text2: "Your password has been updated successfully.",
                     onHide: () => router.replace("/(auth)/login"),
+                    autoHide: true,
                   });
                 } else {
                   const errorData = await result.json();

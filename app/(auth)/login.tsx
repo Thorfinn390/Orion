@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
+import { apiFetch } from "../../utils/apiFetch";
 
 type AuthMethod = "email" | "phone";
 
@@ -118,16 +119,10 @@ export default function LoginScreen() {
       };
 
       try {
-        const response = await fetch(
-          `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/login`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(userObject),
-          },
-        );
+        const response = await apiFetch("/auth/login", {
+          method: "POST",
+          body: JSON.stringify(userObject),
+        });
 
         const result = await response.json();
 
@@ -139,9 +134,10 @@ export default function LoginScreen() {
             type: "success",
             text1: `Hey ${result.fullName || "there"}👋`,
             visibilityTime: 2000,
+            autoHide: true,
           });
 
-          router.push("/(tabs)/profile");
+          router.replace("/(tabs)/profile");
         } else {
           Toast.show({
             type: "error",

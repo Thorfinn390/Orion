@@ -9,13 +9,12 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Mock data for the chats
+// Mock data (Keep this or replace with real data from your backend)
 const chatHistory = [
-  { id: "1", title: "Flight AA 2847 Status" },
+  { id: "1", title: "Flight MEA 204 Status" },
   { id: "2", title: "Trip to Paris Planning" },
   { id: "3", title: "Lost Luggage Inquiry" },
-  { id: "4", title: "Hotel Bookings NYC" },
-  { id: "5", title: "Dinner Reservations" },
+  { id: "4", title: "Heathrow Connection Info" },
 ];
 
 const ChatSideBar = ({
@@ -27,48 +26,58 @@ const ChatSideBar = ({
 
   const handleNewChat = () => {
     changeSideBarStatus(false);
+    // Add logic here to router.push to a fresh chat ID
   };
 
   return (
-    /* Added fixed width here: w-[300px] */
     <View
       style={{
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
       }}
-      className="flex-1 bg-navtab border-r border-white/5 w-[300px] z-10 absolute top-0 bottom-0 left-0"
+      className="flex-1 bg-navtab border-r border-white/10 w-[300px]"
     >
-      {/* --- TOP ACTION BAR --- */}
-      <View className="px-md pt-xl pb-md flex-row items-center gap-sm">
-        {/* NEW CHAT BUTTON */}
+      {/* --- BRANDING & ACTION --- */}
+      <View className="px-md pt-lg pb-md">
+        <View className="flex-row items-center mb-md ml-xs">
+          <View className="w-6 h-6 bg-nova rounded-md items-center justify-center mr-sm shadow-sm">
+            <Ionicons name="airplane" size={14} color="white" />
+          </View>
+          <Text className="text-white font-black tracking-widest text-sm uppercase">
+            Orion Logic
+          </Text>
+        </View>
+
         <TouchableOpacity
           onPress={handleNewChat}
           activeOpacity={0.8}
-          className="flex-1 flex-row items-center justify-center bg-nova h-12 rounded-xl shadow-md"
+          className="flex-row items-center justify-center bg-nova h-12 rounded-xl shadow-lg border border-white/10"
         >
-          <Ionicons name="add" size={20} color="white" />
-          <Text className="text-white font-bold ml-xs">New Chat</Text>
+          <Ionicons name="add-circle" size={20} color="white" />
+          <Text className="text-white font-bold ml-sm text-base">
+            New Flight Chat
+          </Text>
         </TouchableOpacity>
       </View>
 
-      {/* --- SEARCH INPUT --- */}
+      {/* --- SEARCH --- */}
       <View className="px-md mb-lg">
-        <View className="flex-row items-center bg-activeflight px-sm rounded-lg border border-white/10">
-          <Ionicons name="search-outline" size={18} color="#7B8BAA" />
+        <View className="flex-row items-center bg-activeflight/50 px-md rounded-xl border border-white/5">
+          <Ionicons name="search" size={16} color="#7B8BAA" />
           <TextInput
-            placeholder="Search chats..."
+            placeholder="Find a conversation..."
             placeholderTextColor="#7B8BAA"
-            className="flex-1 text-white text-sm py-sm ml-xs"
+            className="flex-1 text-white text-sm py-sm ml-sm"
           />
         </View>
       </View>
 
-      {/* --- CHATS HEADER --- */}
-      <View className="px-md mb-sm flex-row items-center justify-between">
-        <Text className="text-meta text-xs font-black uppercase tracking-widest">
-          Recent Chats
+      {/* --- LIST HEADER --- */}
+      <View className="px-md mb-sm flex-row items-center">
+        <Text className="text-meta text-[10px] font-black uppercase tracking-[2px]">
+          Mission Log
         </Text>
-        <View className="h-[1px] flex-1 bg-white/10 ml-md" />
+        <View className="h-[1px] flex-1 bg-white/5 ml-md" />
       </View>
 
       {/* --- CHAT LIST --- */}
@@ -81,44 +90,48 @@ const ChatSideBar = ({
           <TouchableOpacity
             key={chat.id}
             activeOpacity={0.7}
-            className="flex-row items-center justify-between p-md mb-xs rounded-xl bg-activeflight/30 border border-transparent"
+            className="flex-row items-center justify-between p-md mb-xs rounded-xl bg-transparent border border-transparent hover:bg-activeflight/20"
           >
             <View className="flex-row items-center flex-1 mr-sm">
+              <View className="w-2 h-2 rounded-full bg-meta/30 mr-md" />
               <Text
-                className="text-white/80 text-sm ml-sm font-medium"
+                className="text-meta text-sm font-semibold"
                 numberOfLines={1}
               >
                 {chat.title}
               </Text>
             </View>
 
-            {/* DELETE BUTTON */}
             <TouchableOpacity
-              onPress={() => console.log("Delete chat", chat.id)}
-              className="w-8 h-8 items-center justify-center rounded-lg bg-statusUL/10"
+              onPress={() => console.log("Delete", chat.id)}
+              className="w-7 h-7 items-center justify-center rounded-lg hover:bg-statusUL/20"
             >
-              <Ionicons name="trash-outline" size={16} color="#C84B4B" />
+              <Ionicons name="ellipsis-vertical" size={14} color="#3A4863" />
             </TouchableOpacity>
           </TouchableOpacity>
         ))}
       </ScrollView>
 
-      {/* --- FOOTER: USER PROFILE --- */}
-      <View className="p-md border-t border-white/5 bg-activeflight/20">
+      {/* --- FOOTER: USER CARD --- */}
+      <View className="mx-md mb-md p-md rounded-2xl bg-activeflight border border-white/5 shadow-card">
         <View className="flex-row items-center justify-between">
           <View className="flex-row items-center">
-            <View className="w-9 h-9 rounded-full bg-nova items-center justify-center border border-white/20">
+            <View className="w-10 h-10 rounded-full bg-primaryBrand items-center justify-center border-2 border-activeflight shadow-sm">
               <Text className="text-white text-xs font-black">JD</Text>
             </View>
-            <View className="ml-sm">
+            <View className="ml-md">
               <Text className="text-white text-xs font-bold">John Doe</Text>
-              <Text className="text-meta text-[10px] font-medium">
-                Premium Member
-              </Text>
+              <View className="flex-row items-center">
+                <View className="w-1.5 h-1.5 rounded-full bg-statusD mr-xs" />
+                <Text className="text-meta text-[10px] font-bold uppercase tracking-tighter">
+                  Verified Flyer
+                </Text>
+              </View>
             </View>
           </View>
-          <TouchableOpacity>
-            <Ionicons name="settings-outline" size={20} color="#7B8BAA" />
+
+          <TouchableOpacity className="bg-white/5 p-sm rounded-lg">
+            <Ionicons name="settings-sharp" size={16} color="#7B8BAA" />
           </TouchableOpacity>
         </View>
       </View>

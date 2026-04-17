@@ -8,8 +8,12 @@ interface AuthState {
   is_2fa_enabled: boolean;
   accessToken: string | null;
   refreshToken: string | null;
+  isLoggedIn: boolean;
+  userId: string | null;
+
   // Actions
   setFullName: (name: string) => Promise<void>;
+  setUserId: (userId: string) => Promise<void>;
   setEmail: (email: string) => Promise<void>;
   setIsEmailVerified: (verified: boolean) => Promise<void>;
   setIs2faEnabled: (enabled: boolean) => Promise<void>;
@@ -17,6 +21,7 @@ interface AuthState {
   setAuth: (payload: any) => Promise<void>; // Bulk update helper
   initializeAuth: () => Promise<void>;
   clearAuth: () => Promise<void>;
+  setIsLoggedIn: (status: boolean) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -24,8 +29,15 @@ export const useAuthStore = create<AuthState>((set) => ({
   email: null,
   is_email_verified: false,
   is_2fa_enabled: false,
+  isLoggedIn: false,
   accessToken: null,
+  userId: null,
   refreshToken: null,
+
+  setUserId: async (userId: string) => {
+    set({ userId });
+    await SecureStore.setItemAsync("userId", userId);
+  },
 
   setFullName: async (name: string) => {
     set({ fullName: name });
@@ -55,6 +67,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     ]);
   },
 
+  setIsLoggedIn: (status: boolean) => {
+    set({ isLoggedIn: status });
+  },
+
   // Use this for Login/Signup to update everything in one go
   setAuth: async (payload: any) => {
     set({
@@ -64,6 +80,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       is_2fa_enabled: payload.is_2fa_enabled,
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
+      userId: payload.userId,
     });
 
     await Promise.all([
@@ -79,6 +96,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       ),
       SecureStore.setItemAsync("userToken", payload.accessToken || ""),
       SecureStore.setItemAsync("refreshToken", payload.refreshToken || ""),
+      SecureStore.setItem("userId", payload.userId || ""),
     ]);
   },
 
@@ -90,6 +108,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       is_2fa_enabled,
       accessToken,
       refreshToken,
+      userId,
     ] = await Promise.all([
       SecureStore.getItemAsync("fullName"),
       SecureStore.getItemAsync("email"),
@@ -97,6 +116,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       SecureStore.getItemAsync("is_2fa_enabled"),
       SecureStore.getItemAsync("userToken"),
       SecureStore.getItemAsync("refreshToken"),
+      SecureStore.getItemAsync("userId"),
     ]);
 
     set({
@@ -106,6 +126,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       is_2fa_enabled: is_2fa_enabled === "true",
       accessToken,
       refreshToken,
+      isLoggedIn: accessToken ? true : false,
+      userId,
     });
   },
 
@@ -117,6 +139,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       is_2fa_enabled: false,
       accessToken: null,
       refreshToken: null,
+      isLoggedIn: false,
+      userId: null,
     });
 
     await Promise.all([
@@ -126,6 +150,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       SecureStore.deleteItemAsync("is_2fa_enabled"),
       SecureStore.deleteItemAsync("userToken"),
       SecureStore.deleteItemAsync("refreshToken"),
+      SecureStore.deleteItemAsync("userId"),
     ]);
   },
 }));

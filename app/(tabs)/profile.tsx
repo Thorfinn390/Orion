@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
+import { apiFetch } from "@/utils/apiFetch";
 import { router } from "expo-router";
 import {
   ChevronRight,
@@ -70,8 +71,8 @@ export default function ProfileScreen() {
   // Pull data and logout action from AuthStore
   const fullName = useAuthStore((state) => state.fullName);
   const email = useAuthStore((state) => state.email);
-  const accessToken = useAuthStore((state) => state.accessToken);
   const clearAuth = useAuthStore((state) => state.clearAuth);
+  const userId = useAuthStore((state) => state.userId);
 
   const goToSecurity = useCallback(
     () => router.push("/(profile)/securityAndPassword"),
@@ -84,25 +85,26 @@ export default function ProfileScreen() {
 
   const handleLogout = async () => {
     try {
+      console.log("hhh");
       setLoading(true);
 
-      const response = await fetch(
-        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/logout`,
-        {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": "application/json",
-          },
-        },
-      );
+      const response = await apiFetch(`/auth/logout/${userId}`, {
+        method: "GET",
+      });
 
-      // We clear the store locally regardless of whether the server GET request
-      // succeeded perfectly, to ensure the user isn't "stuck" logged in.
-      if (response.status === 200 || response.status === 201) {
+      if (response.status === 200) {
+        console.log("h");
         await clearAuth();
-        Toast.show({ type: "success", text1: "Logged out successfully" });
+        Toast.show({
+          type: "success",
+          text1: "Logged out successfully",
+          autoHide: true,
+          visibilityTime: 2000,
+        });
         router.replace("/(auth)/login");
+      } else {
+        const result = await response.json();
+        Toast.show({ type: "error", text1: result.message });
       }
     } catch (e) {
       console.warn(e);

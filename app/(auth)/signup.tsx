@@ -1,3 +1,4 @@
+import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
@@ -160,25 +161,20 @@ export default function SignUpScreen() {
 
       console.log("HERE");
       try {
-        const response = await fetch(
-          `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/signUp`,
-          {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify(data),
-          },
-        );
-        console.log("here 2");
+        const response = await apiFetch("/auth/signUp", {
+          method: "POST",
+          body: JSON.stringify(data),
+        });
+
         const result = await response.json();
-        console.log("here 3");
+
         if (response.ok) {
           Toast.show({
             type: "success",
             text1: "Account Created",
             text2: "Welcome to Orion! 👋",
             visibilityTime: 2000,
+            autoHide: true,
           });
           router.push({
             pathname: "/(auth)/OTP",

@@ -6,7 +6,7 @@ import { ImageBackground } from "react-native";
 export default function Index() {
   const [isLoading, setIsLoading] = useState(true);
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
-  const accessToken = useAuthStore((state) => state.accessToken);
+  const loggedIn = useAuthStore((state) => state.isLoggedIn);
 
   useEffect(() => {
     async function checkAuth() {
@@ -19,7 +19,7 @@ export default function Index() {
       }
     }
     checkAuth();
-  }, []);
+  }, [initializeAuth]);
 
   if (isLoading) {
     return (
@@ -31,7 +31,7 @@ export default function Index() {
     );
   }
 
-  if (!accessToken) {
+  if (!loggedIn) {
     return <Redirect href="/(auth)/login" />;
   }
 

@@ -1,3 +1,4 @@
+import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams, useRouter } from "expo-router";
 import { useState } from "react";
@@ -15,16 +16,10 @@ export default function ForgotPasswordStep2() {
 
     setLoading(true);
     try {
-      const response = await fetch(
-        `http://${process.env.EXPO_PUBLIC_BACKEND_URL}/auth/resend-otp`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ email }),
-        },
-      );
+      const response = await apiFetch("/auth/resend-otp", {
+        method: "POST",
+        body: JSON.stringify({ email }),
+      });
 
       if (response.status === 201) {
         Toast.show({
