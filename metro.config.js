@@ -17,6 +17,14 @@ config.resolver.assetExts.push(
   "arobject",
 );
 
+config.resolver.sourceExts = [
+  ...config.resolver.sourceExts,
+  "mjs",
+  "cjs",
+  "js",
+  "jsx",
+];
+
 module.exports = withNativeWind(config, {
   input: path.resolve(__dirname, "./app/globals.css"),
 });

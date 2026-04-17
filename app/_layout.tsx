@@ -1,4 +1,5 @@
 import FloatingAIButton from "@/components/AI/FloatingAIButton";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import { router, Stack, usePathname } from "expo-router";
 import { ExpoSpeechRecognitionModule } from "expo-speech-recognition";
@@ -10,6 +11,17 @@ import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 import "./globals.css";
+
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 10,
+      retry: 2,
+      refetchOnWindowFocus: true,
+    },
+  },
+});
 
 export default function RootLayout() {
   const pathname = usePathname();
@@ -66,43 +78,45 @@ export default function RootLayout() {
   }, []);
 
   return (
-    <SafeAreaProvider>
-      <Stack screenOptions={{ headerShown: false }} />
+    <QueryClientProvider client={queryClient}>
+      <SafeAreaProvider>
+        <Stack screenOptions={{ headerShown: false }} />
 
-      {!pathname.includes("(auth)") && (
-        <FloatingAIButton
-          handleStart={handleStart}
-          startSpeechIndicator={handleSpeechIndicator}
-          getNewTranscript={getNewTranscript}
-        />
-      )}
-
-      <Toast />
-
-      <MotiView
-        pointerEvents={recognizing ? "auto" : "none"}
-        animate={{
-          opacity: recognizing ? 1 : 0,
-          scale: recognizing ? 1 : 0.9,
-        }}
-        transition={{
-          type: "timing",
-          duration: 200,
-        }}
-        style={styles.overlayWrapper}
-      >
-        {recognizing && (
-          <BlurView
-            style={styles.blurOverlay}
-            intensity={40}
-            tint="dark"
-            experimentalBlurMethod="dimezisBlurView"
-          >
-            <Text style={styles.text}>{transcript}</Text>
-          </BlurView>
+        {!pathname.includes("(auth)") && (
+          <FloatingAIButton
+            handleStart={handleStart}
+            startSpeechIndicator={handleSpeechIndicator}
+            getNewTranscript={getNewTranscript}
+          />
         )}
-      </MotiView>
-    </SafeAreaProvider>
+
+        <Toast />
+
+        <MotiView
+          pointerEvents={recognizing ? "auto" : "none"}
+          animate={{
+            opacity: recognizing ? 1 : 0,
+            scale: recognizing ? 1 : 0.9,
+          }}
+          transition={{
+            type: "timing",
+            duration: 200,
+          }}
+          style={styles.overlayWrapper}
+        >
+          {recognizing && (
+            <BlurView
+              style={styles.blurOverlay}
+              intensity={40}
+              tint="dark"
+              experimentalBlurMethod="dimezisBlurView"
+            >
+              <Text style={styles.text}>{transcript}</Text>
+            </BlurView>
+          )}
+        </MotiView>
+      </SafeAreaProvider>
+    </QueryClientProvider>
   );
 }
 

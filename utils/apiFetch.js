@@ -19,7 +19,7 @@ export const apiFetch = async (endpoint, options = {}) => {
   let response = await fetch(`${BASE_URL}${endpoint}`, config);
 
   //Check for expired token
-  if (response.status === 403) {
+  if (response.status === 403 || response.status === 401) {
     const refreshToken = await SecureStore.getItemAsync("refreshToken");
 
     if (refreshToken) {
@@ -28,6 +28,8 @@ export const apiFetch = async (endpoint, options = {}) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
+
+      console.log("Refresh status:", refreshResponse.status);
 
       if (refreshResponse.ok) {
         const data = await refreshResponse.json();

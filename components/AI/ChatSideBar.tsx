@@ -1,7 +1,12 @@
+import { useAuthStore } from "@/stores/useAuthStore";
+import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
-import React from "react";
+import { useQuery } from "@tanstack/react-query";
+import React, { useState } from "react";
 import {
-  ScrollView,
+  ActivityIndicator,
+  Alert,
+  FlatList,
   Text,
   TextInput,
   TouchableOpacity,
@@ -9,24 +14,46 @@ import {
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 
-// Mock data (Keep this or replace with real data from your backend)
-const chatHistory = [
-  { id: "1", title: "Flight MEA 204 Status" },
-  { id: "2", title: "Trip to Paris Planning" },
-  { id: "3", title: "Lost Luggage Inquiry" },
-  { id: "4", title: "Heathrow Connection Info" },
-];
-
 const ChatSideBar = ({
   changeSideBarStatus,
 }: {
   changeSideBarStatus: (status: boolean) => void;
 }) => {
   const insets = useSafeAreaInsets();
+  const fullName = useAuthStore((state) => state.fullName);
+  const email = useAuthStore((state) => state.email);
+  const userId = useAuthStore((state) => state.userId);
+
+  const [page, setPage] = useState(1);
+
+  const { data: chatHistory_, isLoading: chatHistoryLoading } = useQuery({
+    queryKey: ["chat-history", userId, page],
+    queryFn: async () => {
+      const response = await apiFetch(`/chat?page=${page}&limit=10`, {
+        method: "GET",
+      });
+      return await response.json();
+    },
+    enabled: !!userId,
+  });
 
   const handleNewChat = () => {
     changeSideBarStatus(false);
-    // Add logic here to router.push to a fresh chat ID
+  };
+
+  const handleDeleteChat = (id: string) => {
+    Alert.alert(
+      "Delete Mission Log",
+      "Are you sure you want to permanently delete this conversation?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: () => console.log("Deleting chat:", id),
+        },
+      ],
+    );
   };
 
   return (
@@ -35,104 +62,123 @@ const ChatSideBar = ({
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
       }}
-      className="flex-1 bg-navtab border-r border-white/10 w-[300px]"
+      className="flex-1 bg-surface border-r border-borderDefault w-full shadow-2xl"
     >
-      {/* --- BRANDING & ACTION --- */}
-      <View className="px-md pt-lg pb-md">
-        <View className="flex-row items-center mb-md ml-xs">
-          <View className="w-6 h-6 bg-nova rounded-md items-center justify-center mr-sm shadow-sm">
-            <Ionicons name="airplane" size={14} color="white" />
-          </View>
-          <Text className="text-white font-black tracking-widest text-sm uppercase">
-            Orion Logic
+      {/* --- BRANDING & HEADER --- */}
+      <View className="px-md pt-lg pb-md border-b border-borderDefault">
+        <View className="mb-md">
+          <Text className="text-meta text-[10px] font-black uppercase tracking-[3px]">
+            Intelligence
           </Text>
+          <Text className="text-2xl font-black text-primary">Mission Log</Text>
         </View>
 
         <TouchableOpacity
           onPress={handleNewChat}
           activeOpacity={0.8}
-          className="flex-row items-center justify-center bg-nova h-12 rounded-xl shadow-lg border border-white/10"
+          className="flex-row items-center justify-center bg-primaryBrand h-12 rounded-2xl shadow-md"
         >
-          <Ionicons name="add-circle" size={20} color="white" />
-          <Text className="text-white font-bold ml-sm text-base">
-            New Flight Chat
+          <Ionicons name="add" size={22} color="white" />
+          <Text className="text-white font-bold ml-xs text-base">
+            New Mission
           </Text>
         </TouchableOpacity>
       </View>
 
       {/* --- SEARCH --- */}
-      <View className="px-md mb-lg">
-        <View className="flex-row items-center bg-activeflight/50 px-md rounded-xl border border-white/5">
+      <View className="px-md mt-lg mb-md">
+        <View className="flex-row items-center bg-inputSurface px-md rounded-2xl border border-borderEmphasis">
           <Ionicons name="search" size={16} color="#7B8BAA" />
           <TextInput
-            placeholder="Find a conversation..."
+            placeholder="Search logs..."
             placeholderTextColor="#7B8BAA"
-            className="flex-1 text-white text-sm py-sm ml-sm"
+            className="flex-1 text-primary text-sm py-sm ml-sm font-medium"
           />
         </View>
       </View>
 
-      {/* --- LIST HEADER --- */}
-      <View className="px-md mb-sm flex-row items-center">
-        <Text className="text-meta text-[10px] font-black uppercase tracking-[2px]">
-          Mission Log
-        </Text>
-        <View className="h-[1px] flex-1 bg-white/5 ml-md" />
-      </View>
-
       {/* --- CHAT LIST --- */}
-      <ScrollView
-        className="flex-1 px-sm"
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 20 }}
-      >
-        {chatHistory.map((chat) => (
-          <TouchableOpacity
-            key={chat.id}
-            activeOpacity={0.7}
-            className="flex-row items-center justify-between p-md mb-xs rounded-xl bg-transparent border border-transparent hover:bg-activeflight/20"
-          >
-            <View className="flex-row items-center flex-1 mr-sm">
-              <View className="w-2 h-2 rounded-full bg-meta/30 mr-md" />
-              <Text
-                className="text-meta text-sm font-semibold"
-                numberOfLines={1}
-              >
-                {chat.title}
+      {chatHistoryLoading ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator size="small" color="#1568C4" />
+        </View>
+      ) : (
+        <FlatList
+          data={chatHistory_?.data || []}
+          keyExtractor={(item) => item.id.toString()}
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingHorizontal: 12, paddingBottom: 20 }}
+          ListEmptyComponent={
+            <View className="flex-1 items-center justify-center py-20">
+              <View className="w-16 h-16 bg-primaryBrand/5 rounded-3xl items-center justify-center mb-md rotate-12">
+                <Ionicons name="journal-outline" size={32} color="#1568C4" />
+              </View>
+              <Text className="text-primary font-bold text-lg">No Chats</Text>
+              <Text className="text-meta/70 text-center px-lg mt-xs text-xs">
+                Your past flight data and queries will appear here.
               </Text>
             </View>
+          }
+          renderItem={({ item: chat }) => (
+            <View className="flex-row items-center mb-xs">
+              <TouchableOpacity
+                activeOpacity={0.7}
+                className="flex-1 flex-row items-center p-md rounded-2xl bg-white border border-borderDefault shadow-sm"
+              >
+                <View className="w-1.5 h-6 rounded-full bg-primaryBrand/20 mr-md" />
+                <View className="flex-1">
+                  <Text
+                    className="text-primary text-sm font-bold"
+                    numberOfLines={1}
+                  >
+                    {chat.title || "Untitled Intelligence"}
+                  </Text>
+                  <Text className="text-meta text-[10px] font-bold uppercase mt-xs">
+                    Nova
+                  </Text>
+                </View>
+              </TouchableOpacity>
 
-            <TouchableOpacity
-              onPress={() => console.log("Delete", chat.id)}
-              className="w-7 h-7 items-center justify-center rounded-lg hover:bg-statusUL/20"
-            >
-              <Ionicons name="ellipsis-vertical" size={14} color="#3A4863" />
-            </TouchableOpacity>
-          </TouchableOpacity>
-        ))}
-      </ScrollView>
+              <TouchableOpacity
+                onPress={() => handleDeleteChat(chat.id)}
+                activeOpacity={0.5}
+                className="w-10 h-10 items-center justify-center rounded-xl ml-xs bg-red-50 border border-red-100"
+              >
+                <Ionicons name="trash-outline" size={18} color="#EF4444" />
+              </TouchableOpacity>
+            </View>
+          )}
+        />
+      )}
 
       {/* --- FOOTER: USER CARD --- */}
-      <View className="mx-md mb-md p-md rounded-2xl bg-activeflight border border-white/5 shadow-card">
-        <View className="flex-row items-center justify-between">
-          <View className="flex-row items-center">
-            <View className="w-10 h-10 rounded-full bg-primaryBrand items-center justify-center border-2 border-activeflight shadow-sm">
-              <Text className="text-white text-xs font-black">JD</Text>
-            </View>
-            <View className="ml-md">
-              <Text className="text-white text-xs font-bold">John Doe</Text>
-              <View className="flex-row items-center">
-                <View className="w-1.5 h-1.5 rounded-full bg-statusD mr-xs" />
-                <Text className="text-meta text-[10px] font-bold uppercase tracking-tighter">
-                  Verified Flyer
+      <View className="px-md pt-md">
+        <View className="p-md rounded-[24px] border border-borderEmphasis bg-inputSurface shadow-md">
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center">
+              <View className="w-12 h-12 rounded-2xl bg-primaryBrand items-center justify-center shadow-lg">
+                <Text className="text-white text-lg font-black">
+                  {fullName?.charAt(0)}
+                </Text>
+              </View>
+              <View className="ml-md">
+                <Text
+                  className="text-primary text-sm font-black"
+                  numberOfLines={1}
+                >
+                  {fullName}
+                </Text>
+                <Text className="text-primaryBrand text-[10px] font-bold uppercase tracking-wider">
+                  Verified Agent
                 </Text>
               </View>
             </View>
-          </View>
 
-          <TouchableOpacity className="bg-white/5 p-sm rounded-lg">
-            <Ionicons name="settings-sharp" size={16} color="#7B8BAA" />
-          </TouchableOpacity>
+            <TouchableOpacity className="bg-surface p-sm rounded-xl border border-borderDefault">
+              <Ionicons name="settings-outline" size={18} color="#0D1A3A" />
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     </View>
