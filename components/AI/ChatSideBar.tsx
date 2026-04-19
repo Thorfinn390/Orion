@@ -1,4 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useChatStore } from "@/stores/useChatStore";
 import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
@@ -25,6 +26,8 @@ const ChatSideBar = ({
   const userId = useAuthStore((state) => state.userId);
 
   const [page, setPage] = useState(1);
+
+  const setCurrentChatId = useChatStore((state: any) => state.setCurrentChatId);
 
   const { data: chatHistory_, isLoading: chatHistoryLoading } = useQuery({
     queryKey: ["chat-history", userId, page],
@@ -69,10 +72,12 @@ const ChatSideBar = ({
 
   const handleNewChat = () => {
     changeSideBarStatus(false);
+    setCurrentChatId(null);
   };
 
   const handleDeleteChat = (id: string) => {
     deleteChatMutation.mutate(id);
+    setCurrentChatId(null);
   };
 
   return (
@@ -142,6 +147,10 @@ const ChatSideBar = ({
             return (
               <View className="flex-row items-center mb-xs">
                 <TouchableOpacity
+                  onPress={() => {
+                    setCurrentChatId(chat?.id);
+                    changeSideBarStatus(false);
+                  }}
                   activeOpacity={0.7}
                   className="flex-1 flex-row items-center p-md rounded-2xl bg-white border border-borderDefault shadow-sm"
                 >
