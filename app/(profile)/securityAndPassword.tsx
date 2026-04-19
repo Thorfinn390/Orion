@@ -1,3 +1,5 @@
+import { useAuthStore } from "@/stores/useAuthStore";
+import { apiFetch } from "@/utils/apiFetch";
 import { router } from "expo-router";
 import {
   ChevronLeft,
@@ -16,6 +18,7 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const SecurityCard = React.memo(
   ({ icon: Icon, title, description, onPress, children }: any) => (
@@ -46,8 +49,69 @@ const SecurityCard = React.memo(
 SecurityCard.displayName = "SecurityCard";
 
 export default function SecurityScreen() {
-  const [is2FAEnabled, setIs2FAEnabled] = useState(false);
+  let is2FAEnabledStored = useAuthStore((state) => state.is_2fa_enabled);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(is2FAEnabledStored);
+  const clearAuth = useAuthStore((state) => state.clearAuth);
+  const userId = useAuthStore((state) => state.userId);
+  const deleteAccRequest= async ()=>{
+    try{
+    const response = await apiFetch("/user/request-account-deletion", {
+            method: "POST",
+          });
 
+      
+     if (response.status === 200 || response.status === 201) {
+            // Toast.show({
+            //   type: "success",
+            //   text1: "Account queued for qeletion",
+            //   text2: "Check your email for confirmation.",
+            //   autoHide: true,
+            //   visibilityTime: 4000,
+            // });
+
+            logout();
+    
+          } else {
+            Toast.show({
+              type: "error",
+              text1: "request Failed",
+              text2: response.message || "Something went wrong",
+            });
+          }
+        } catch (error) {
+          Toast.show({
+            type: "error",
+            text1: "Network Error",
+            text2: "Could not connect to the server.",
+          });
+        }
+  }
+const logout=async () => {
+  try{
+  console.log("Logging out user with ID:", userId);
+        const response = await apiFetch(`/auth/logout/${userId}`, {
+          method: "GET",
+        });
+  
+        if (response.status === 200) {
+          console.log("h");
+          await clearAuth();
+          Toast.show({
+            type: "success",
+            text1: "Logged out successfully",
+            autoHide: true,
+            visibilityTime: 2000,
+          });
+          router.replace("/(auth)/login");
+        } else {
+          const result = await response.json();
+          Toast.show({ type: "error", text1: result.message });
+        }
+      } catch (e) {
+        console.warn(e);
+        Toast.show({ type: "error", text1: "Error logging you out" });
+      } 
+}
   const handleDeleteAccount = () => {
     Alert.alert(
       "Delete Account",
@@ -57,10 +121,18 @@ export default function SecurityScreen() {
         {
           text: "Delete",
           style: "destructive",
-          onPress: () => console.log("Delete"),
+          onPress: () => {deleteAccRequest();},
         },
       ],
     );
+  };
+  const handle2FAToggle = (newValue: boolean) => {
+    setIs2FAEnabled(newValue);
+
+    router.push({
+      pathname: "/settings/two-factor-setup", 
+      params: { status: newValue }
+    });
   };
 
   return (

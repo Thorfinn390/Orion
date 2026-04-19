@@ -64,6 +64,37 @@ const SettingItem = React.memo(
 );
 
 SettingItem.displayName = "SettingItem";
+export const handleLogout=async ()=>  {
+  try {
+    console.log("hhh");
+    setLoading(true);
+    console.log("Logging out user with ID:", userId);
+    const response = await apiFetch(`/auth/logout/${userId}`, {
+      method: "GET",
+    });
+
+    if (response.status === 200) {
+      console.log("h");
+      await clearAuth();
+      Toast.show({
+        type: "success",
+        text1: "Logged out successfully",
+        autoHide: true,
+        visibilityTime: 2000,
+      });
+      router.replace("/(auth)/login");
+    } else {
+      const result = await response.json();
+      Toast.show({ type: "error", text1: result.message });
+    }
+  } catch (e) {
+    console.warn(e);
+    Toast.show({ type: "error", text1: "Error logging you out" });
+  } finally {
+    setLoading(false);
+  }
+};
+
 
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
@@ -83,36 +114,6 @@ export default function ProfileScreen() {
     [],
   );
 
-  const handleLogout = async () => {
-    try {
-      console.log("hhh");
-      setLoading(true);
-
-      const response = await apiFetch(`/auth/logout/${userId}`, {
-        method: "GET",
-      });
-
-      if (response.status === 200) {
-        console.log("h");
-        await clearAuth();
-        Toast.show({
-          type: "success",
-          text1: "Logged out successfully",
-          autoHide: true,
-          visibilityTime: 2000,
-        });
-        router.replace("/(auth)/login");
-      } else {
-        const result = await response.json();
-        Toast.show({ type: "error", text1: result.message });
-      }
-    } catch (e) {
-      console.warn(e);
-      Toast.show({ type: "error", text1: "Error logging you out" });
-    } finally {
-      setLoading(false);
-    }
-  };
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
@@ -209,3 +210,4 @@ export default function ProfileScreen() {
     </SafeAreaView>
   );
 }
+
