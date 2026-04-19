@@ -45,6 +45,7 @@ export default function RootLayout() {
 
     if (!indicate) {
       const cleanTranscript = transcript.toLowerCase().trim();
+      console.log("cleanTranscript");
 
       if (cleanTranscript.includes("navigate to home")) {
         router.push("/(tabs)");

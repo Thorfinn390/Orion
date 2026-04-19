@@ -1,11 +1,10 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
-  Alert,
   FlatList,
   Text,
   TextInput,
@@ -13,6 +12,7 @@ import {
   View,
 } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
 const ChatSideBar = ({
   changeSideBarStatus,
@@ -20,8 +20,8 @@ const ChatSideBar = ({
   changeSideBarStatus: (status: boolean) => void;
 }) => {
   const insets = useSafeAreaInsets();
+  const queryClient = useQueryClient();
   const fullName = useAuthStore((state) => state.fullName);
-  const email = useAuthStore((state) => state.email);
   const userId = useAuthStore((state) => state.userId);
 
   const [page, setPage] = useState(1);
@@ -37,23 +37,42 @@ const ChatSideBar = ({
     enabled: !!userId,
   });
 
+  const deleteChatMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      const response = await apiFetch(`/chat/${chatId}`, {
+        method: "DELETE",
+      });
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Failed to delete chat");
+      }
+      return chatId;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["chat-history"] });
+      Toast.show({
+        type: "success",
+        text1: "Log Deleted",
+        text2: "The conversation has been removed.",
+        position: "bottom",
+      });
+    },
+    onError: (error: any) => {
+      Toast.show({
+        type: "error",
+        text1: "Deletion Failed",
+        text2: error.message || "Something went wrong.",
+        position: "bottom",
+      });
+    },
+  });
+
   const handleNewChat = () => {
     changeSideBarStatus(false);
   };
 
   const handleDeleteChat = (id: string) => {
-    Alert.alert(
-      "Delete Mission Log",
-      "Are you sure you want to permanently delete this conversation?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: () => console.log("Deleting chat:", id),
-        },
-      ],
-    );
+    deleteChatMutation.mutate(id);
   };
 
   return (
@@ -62,15 +81,15 @@ const ChatSideBar = ({
         paddingTop: insets.top,
         paddingBottom: insets.bottom,
       }}
-      className="flex-1 bg-surface border-r border-borderDefault w-full shadow-2xl"
+      className="flex-1 bg-surface border-r border-borderDefault w-[300px] shadow-2xl"
     >
-      {/* --- BRANDING & HEADER --- */}
+      {/* --- HEADER --- */}
       <View className="px-md pt-lg pb-md border-b border-borderDefault">
         <View className="mb-md">
           <Text className="text-meta text-[10px] font-black uppercase tracking-[3px]">
             Intelligence
           </Text>
-          <Text className="text-2xl font-black text-primary">Mission Log</Text>
+          <Text className="text-2xl font-black text-primary">Nova</Text>
         </View>
 
         <TouchableOpacity
@@ -79,9 +98,7 @@ const ChatSideBar = ({
           className="flex-row items-center justify-center bg-primaryBrand h-12 rounded-2xl shadow-md"
         >
           <Ionicons name="add" size={22} color="white" />
-          <Text className="text-white font-bold ml-xs text-base">
-            New Mission
-          </Text>
+          <Text className="text-white font-bold ml-xs text-base">New Chat</Text>
         </TouchableOpacity>
       </View>
 
@@ -115,44 +132,56 @@ const ChatSideBar = ({
                 <Ionicons name="journal-outline" size={32} color="#1568C4" />
               </View>
               <Text className="text-primary font-bold text-lg">No Chats</Text>
-              <Text className="text-meta/70 text-center px-lg mt-xs text-xs">
-                Your past flight data and queries will appear here.
-              </Text>
             </View>
           }
-          renderItem={({ item: chat }) => (
-            <View className="flex-row items-center mb-xs">
-              <TouchableOpacity
-                activeOpacity={0.7}
-                className="flex-1 flex-row items-center p-md rounded-2xl bg-white border border-borderDefault shadow-sm"
-              >
-                <View className="w-1.5 h-6 rounded-full bg-primaryBrand/20 mr-md" />
-                <View className="flex-1">
-                  <Text
-                    className="text-primary text-sm font-bold"
-                    numberOfLines={1}
-                  >
-                    {chat.title || "Untitled Intelligence"}
-                  </Text>
-                  <Text className="text-meta text-[10px] font-bold uppercase mt-xs">
-                    Nova
-                  </Text>
-                </View>
-              </TouchableOpacity>
+          renderItem={({ item: chat }) => {
+            const isDeleting =
+              deleteChatMutation.isPending &&
+              deleteChatMutation.variables === chat.id;
 
-              <TouchableOpacity
-                onPress={() => handleDeleteChat(chat.id)}
-                activeOpacity={0.5}
-                className="w-10 h-10 items-center justify-center rounded-xl ml-xs bg-red-50 border border-red-100"
-              >
-                <Ionicons name="trash-outline" size={18} color="#EF4444" />
-              </TouchableOpacity>
-            </View>
-          )}
+            return (
+              <View className="flex-row items-center mb-xs">
+                <TouchableOpacity
+                  activeOpacity={0.7}
+                  className="flex-1 flex-row items-center p-md rounded-2xl bg-white border border-borderDefault shadow-sm"
+                >
+                  <View className="w-1.5 h-6 rounded-full bg-primaryBrand/20 mr-md" />
+                  <View className="flex-1">
+                    <Text
+                      className="text-primary text-sm font-bold"
+                      numberOfLines={1}
+                    >
+                      {chat.title || "Untitled Intelligence"}
+                    </Text>
+                    <Text className="text-meta text-[10px] font-bold uppercase mt-xs">
+                      Nova
+                    </Text>
+                  </View>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  onPress={() => handleDeleteChat(chat.id)}
+                  disabled={deleteChatMutation.isPending}
+                  activeOpacity={0.5}
+                  className={`w-10 h-10 items-center justify-center rounded-xl ml-xs border ${
+                    isDeleting
+                      ? "bg-gray-50 border-gray-200"
+                      : "bg-red-50 border-red-100"
+                  }`}
+                >
+                  {isDeleting ? (
+                    <ActivityIndicator size="small" color="#EF4444" />
+                  ) : (
+                    <Ionicons name="trash-outline" size={18} color="#EF4444" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            );
+          }}
         />
       )}
 
-      {/* --- FOOTER: USER CARD --- */}
+      {/* --- FOOTER --- */}
       <View className="px-md pt-md">
         <View className="p-md rounded-[24px] border border-borderEmphasis bg-inputSurface shadow-md">
           <View className="flex-row items-center justify-between">
@@ -174,7 +203,6 @@ const ChatSideBar = ({
                 </Text>
               </View>
             </View>
-
             <TouchableOpacity className="bg-surface p-sm rounded-xl border border-borderDefault">
               <Ionicons name="settings-outline" size={18} color="#0D1A3A" />
             </TouchableOpacity>
