@@ -53,6 +53,8 @@ export default function SecurityScreen() {
   const [is2FAEnabled, setIs2FAEnabled] = useState(is2FAEnabledStored);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const userId = useAuthStore((state) => state.userId);
+
+
   const deleteAccRequest= async ()=>{
     try{
     const response = await apiFetch("/user/request-account-deletion", {
@@ -126,13 +128,31 @@ const logout=async () => {
       ],
     );
   };
-  const handle2FAToggle = (newValue: boolean) => {
+  const handle2FAToggle =  async (newValue: boolean) => {
+    try{
     setIs2FAEnabled(newValue);
+    let verifyRes;
+    if(newValue){
+      console.log("Enabling 2FA");
+      verifyRes = await apiFetch("/user/enable-2fa", {
+        method: "POST",
+      });
+    }else{
+       verifyRes = await apiFetch("/user/disable-2fa", {
+        method: "POST",
+      });
+    }
+    console.log("2FA toggle response:", verifyRes);
+    router.replace("/(securityandpassword)/2faconfirm" as any);
 
-    router.push({
-      pathname: "/settings/two-factor-setup", 
-      params: { status: newValue }
-    });
+    }catch(error){
+      console.error(error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "An unexpected error occurred. Please try again.",
+      });
+    }
   };
 
   return (
@@ -186,7 +206,7 @@ const logout=async () => {
         >
           <Switch
             value={is2FAEnabled}
-            onValueChange={setIs2FAEnabled}
+            onValueChange={handle2FAToggle}
             trackColor={{ false: "#E3E8F4", true: "#1568C4" }}
             thumbColor="#FFFFFF"
           />
