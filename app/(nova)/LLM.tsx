@@ -1,12 +1,19 @@
 import ChatSideBar from "@/components/AI/ChatSideBar";
 import { useAuthStore } from "@/stores/useAuthStore";
+import { useChatStore } from "@/stores/useChatStore";
 import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import { useRouter } from "expo-router";
 import { MotiView } from "moti";
-import React, { useCallback, useRef, useState } from "react";
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from "react";
 import {
   ActivityIndicator,
   FlatList,
@@ -19,13 +26,13 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import Markdown from "react-native-markdown-display";
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
-// ─── COLORS ──────────────────────────────────────────────────────────────────
 const C = {
   brand: "#1568C4",
   primary: "#0D1A3A",
@@ -37,7 +44,6 @@ const C = {
   red: "#EF4444",
 };
 
-// ─── MESSAGE BUBBLE ───────────────────────────────────────────────────────────
 interface MessageProps {
   role: "user" | "assistant";
   message_text: string;
@@ -49,6 +55,43 @@ interface MessageProps {
 const MessageBubble = React.memo(
   ({ role, message_text, sentAt, userInitial, isLoading }: MessageProps) => {
     const isUser = role === "user";
+
+    const formattedTime = useMemo(() => {
+      if (!sentAt) return "";
+      try {
+        return new Date(sentAt).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+      } catch (e) {
+        return "";
+      }
+    }, [sentAt]);
+
+    const markdownStyles = useMemo(
+      () => ({
+        body: {
+          ...styles.bubbleText,
+          color: isUser ? C.white : C.primary,
+        },
+        paragraph: {
+          marginTop: 0,
+          marginBottom: 0,
+          flexWrap: "wrap",
+          flexDirection: "row",
+          alignItems: "flex-start",
+          justifyContent: "flex-start",
+        },
+        link: {
+          color: isUser ? C.white : C.brand,
+          textDecorationLine: "underline",
+        },
+        bullet_list: { marginTop: 4 },
+        ordered_list: { marginTop: 4 },
+      }),
+      [isUser],
+    );
+
     return (
       <MotiView
         from={{ opacity: 0, translateY: 8 }}
@@ -58,7 +101,6 @@ const MessageBubble = React.memo(
           isUser ? styles.bubbleRowUser : styles.bubbleRowAssistant,
         ]}
       >
-        {/* Avatar */}
         <View
           style={[
             styles.avatar,
@@ -75,7 +117,6 @@ const MessageBubble = React.memo(
           </Text>
         </View>
 
-        {/* Bubble */}
         <View style={styles.bubbleWrap}>
           <View
             style={[
@@ -89,14 +130,7 @@ const MessageBubble = React.memo(
                 <ActivityIndicator size="small" color={C.brand} />
               </View>
             ) : (
-              <Text
-                style={[
-                  styles.bubbleText,
-                  isUser ? styles.bubbleTextUser : styles.bubbleTextAssistant,
-                ]}
-              >
-                {message_text}
-              </Text>
+              <Markdown style={markdownStyles as any}>{message_text}</Markdown>
             )}
           </View>
           {!isLoading && (
@@ -106,7 +140,7 @@ const MessageBubble = React.memo(
                 isUser ? styles.timestampRight : styles.timestampLeft,
               ]}
             >
-              {sentAt}
+              {formattedTime}
             </Text>
           )}
         </View>
@@ -114,38 +148,20 @@ const MessageBubble = React.memo(
     );
   },
 );
+
 MessageBubble.displayName = "MessageBubble";
 
-const RenderEmpty = ({ fullName }: { fullName: string | null }) => (
-  <View style={styles.emptyWrap}>
-    <MotiView
-      from={{ opacity: 0, scale: 0.92 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ type: "timing", duration: 500 }}
-      style={styles.emptyInner}
-    >
-      <View style={styles.emptyIconWrap}>
-        <Text style={styles.emptyIcon}>✦</Text>
-      </View>
-      <Text style={styles.emptyLabel}>Welcome back</Text>
-      <Text style={styles.emptyName}>{fullName || "Traveler"}</Text>
-      <Text style={styles.emptyHint}>
-        Ask Nova anything about your flights,{"\n"}bookings, or travel plans.
-      </Text>
-    </MotiView>
-  </View>
-);
-
-// ─── MAIN SCREEN ─────────────────────────────────────────────────────────────
 const LLM = () => {
   const router = useRouter();
   const [chatsOpened, setChatsOpened] = useState(false);
   const [message, setMessage] = useState("");
   const [messages, setMessages] = useState<any[]>([]);
-
-  // Use a ref for chatId so mutations always see the latest value
   const chatIdRef = useRef<string | null>(null);
   const [chatId, _setChatId] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+
+  const setCurrentChatId = useChatStore((state: any) => state.setCurrentChatId);
+
   const setChatId = (id: string | null) => {
     chatIdRef.current = id;
     _setChatId(id);
@@ -154,160 +170,142 @@ const LLM = () => {
   const flatListRef = useRef<FlatList>(null);
   const insets = useSafeAreaInsets();
   const queryClient = useQueryClient();
-
   const userId = useAuthStore((state) => state.userId);
   const fullName = useAuthStore((state) => state.fullName);
   const userInitial = fullName?.charAt(0).toUpperCase() || "U";
+  const currentChatId = useChatStore((state: any) => state.currentChatId);
 
-  // ── CREATE CHAT ─────------------
   const { mutateAsync: createChatMutate } = useMutation({
     mutationFn: async () => {
-      console.log("[CHAT] Creating new chat...");
       const response = await apiFetch("/chat/", { method: "POST" });
-      const data = await response.json();
-      console.log("[CHAT] Create response:", JSON.stringify(data));
-      return data;
+      return await response.json();
     },
     onSuccess: (data) => {
       const id = data?.data?.id ?? data?.id ?? null;
-      console.log("[CHAT] New chat ID:", id);
       if (id) {
         setChatId(id);
         queryClient.invalidateQueries({ queryKey: ["chat-history", userId] });
-      } else {
-        console.warn("[CHAT] No ID found in create response:", data);
       }
     },
   });
 
-  // ── SEND MESSAGE ───────────────────────────────────────────────────────────
   const { mutate: sendMessageMutate, isPending } = useMutation({
     mutationFn: async ({
       activeId,
       text,
-      time,
     }: {
       activeId: string;
       text: string;
-      time: string;
     }) => {
-      console.log(`[MSG] Sending to chat ${activeId}:`, text);
       const response = await apiFetch(`/chat/${activeId}/message`, {
         method: "POST",
         body: JSON.stringify({
           message_text: text,
           firstMessage: messages.length === 0,
-          sentAt: time,
         }),
       });
-
-      console.log("[MSG] Response status:", response.status);
       const data = await response.json();
-      console.log("[MSG] Response body:", JSON.stringify(data));
-
-      if (!response.ok) {
+      if (!response.ok)
         throw new Error(data?.message ?? `HTTP ${response.status}`);
-      }
-
-      // Handle both { data: {...} } and flat { id, role, ... } shapes
       return data?.data ?? data;
     },
     onSuccess: (data) => {
-      console.log(
-        "[MSG] onSuccess, replacing placeholder with:",
-        JSON.stringify(data),
-      );
-      setMessages((prev) => {
-        const next = prev.map((msg) =>
-          msg.id === "loading-temp"
-            ? { ...data, id: data.id ?? Date.now().toString() }
-            : msg,
-        );
-        console.log("[MSG] Messages after update:", next.length);
-        return next;
-      });
-      setTimeout(
-        () => flatListRef.current?.scrollToEnd({ animated: true }),
-        100,
+      setMessages((prev) =>
+        prev.map((msg) => (msg.id === "loading-temp" ? { ...data } : msg)),
       );
     },
     onError: (error: any) => {
-      console.error("[MSG] Send failed:", error);
       setMessages((prev) => prev.filter((msg) => msg.id !== "loading-temp"));
       Toast.show({
         type: "error",
         text1: "Message Failed",
-        text2: error?.message ?? "Unknown error",
+        text2: error?.message,
       });
     },
   });
 
-  // ── SEND HANDLER ───────────────────────────────────────────────────────────
+  const {
+    data: chatMessages,
+    isLoading: isLoadingMessages,
+    isSuccess,
+  } = useQuery({
+    queryKey: ["messages", currentChatId, page],
+    queryFn: async () => {
+      console.log("NOW IM BEING DONE");
+      if (!currentChatId) return null;
+      const response = await apiFetch(
+        `/chat/${currentChatId}/messages?page=${page}`,
+        {
+          method: "GET",
+        },
+      );
+      return await response.json();
+    },
+    enabled: !!currentChatId,
+  });
+
+  useEffect(() => {
+    if (isSuccess && chatMessages?.data) {
+      const syncedMessages = [...chatMessages.data].reverse();
+      setMessages(syncedMessages);
+      setChatId(currentChatId);
+    }
+  }, [isSuccess, chatMessages, currentChatId]);
+
+  useEffect(() => {
+    if (currentChatId === null) {
+      setMessages([]);
+    }
+  }, [currentChatId]);
+
+  useEffect(() => {
+    return () => {
+      setCurrentChatId(null);
+    };
+  }, []);
+
   const handleSendMessage = useCallback(async () => {
     const trimmed = message.trim();
     if (!trimmed || isPending) return;
 
-    const sentAt = new Date().toLocaleTimeString([], {
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-
+    const isoNow = new Date().toISOString();
     setMessage("");
 
-    // Optimistically add user message + loading placeholder immediately
     const userMsg = {
       id: Date.now().toString(),
-      role: "user" as const,
+      sender_type: "user",
       message_text: trimmed,
-      sentAt,
+      sentAt: isoNow,
     };
     const loadingMsg = {
       id: "loading-temp",
-      role: "assistant" as const,
+      sender_type: "bot",
       message_text: "",
       sentAt: "",
       isLoading: true,
     };
 
-    console.log("[FLOW] Adding optimistic messages...");
     setMessages((prev) => [...prev, userMsg, loadingMsg]);
-    setTimeout(() => flatListRef.current?.scrollToEnd({ animated: true }), 50);
 
-    // Resolve chat ID
     let activeId = chatIdRef.current;
-    console.log("[FLOW] Current chatId:", activeId);
-
     if (!activeId) {
       try {
         const newChat = await createChatMutate();
         activeId = newChat?.data?.id ?? newChat?.id ?? null;
-        console.log("[FLOW] Created chat, activeId:", activeId);
-        if (!activeId) {
-          throw new Error("Chat creation returned no ID");
-        }
         setChatId(activeId);
-      } catch (err: any) {
-        console.error("[FLOW] Chat creation failed:", err);
+      } catch (err) {
         setMessages((prev) =>
           prev.filter((m) => m.id !== "loading-temp" && m.id !== userMsg.id),
         );
-        Toast.show({
-          type: "error",
-          text1: "Could not start chat",
-          text2: err?.message ?? "Check your connection",
-        });
         return;
       }
     }
 
-    sendMessageMutate({ activeId: activeId!, text: trimmed, time: sentAt });
+    sendMessageMutate({ activeId: activeId!, text: trimmed });
   }, [message, isPending, createChatMutate, sendMessageMutate]);
-
-  const sendDisabled = !message.trim() || isPending;
 
   return (
     <SafeAreaView style={styles.root} edges={["top", "left", "right"]}>
-      {/* Sidebar */}
       <MotiView
         animate={{ translateX: chatsOpened ? 0 : -320 }}
         transition={{ type: "timing", duration: 250 }}
@@ -319,9 +317,7 @@ const LLM = () => {
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.flex1}
-        keyboardVerticalOffset={0}
       >
-        {/* Header */}
         <View style={styles.header}>
           <TouchableOpacity
             onPress={() => setChatsOpened(true)}
@@ -341,30 +337,31 @@ const LLM = () => {
           </TouchableOpacity>
         </View>
 
-        {/* Messages */}
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={({ item }) => (
-            <MessageBubble
-              role={item.role}
-              message_text={item.message_text}
-              sentAt={item.sentAt}
-              userInitial={userInitial}
-              isLoading={item.isLoading}
-            />
-          )}
-          contentContainerStyle={styles.listContent}
-          ListEmptyComponent={<RenderEmpty fullName={fullName} />}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: false })
-          }
-        />
+        {isLoadingMessages ? (
+          <View style={styles.flex1Center}>
+            <ActivityIndicator size="large" color={C.brand} />
+          </View>
+        ) : (
+          <FlatList
+            ref={flatListRef}
+            data={messages}
+            keyExtractor={(item) => item.id}
+            renderItem={({ item }) => (
+              <MessageBubble
+                role={item.sender_type === "bot" ? "assistant" : "user"}
+                message_text={item.message_text}
+                sentAt={item.sentAt}
+                userInitial={userInitial}
+                isLoading={item.isLoading}
+              />
+            )}
+            contentContainerStyle={styles.listContent}
+            onContentSizeChange={() =>
+              flatListRef.current?.scrollToEnd({ animated: true })
+            }
+          />
+        )}
 
-        {/* ── NEW INPUT BAR ── */}
         <View
           style={[
             styles.inputBar,
@@ -372,11 +369,9 @@ const LLM = () => {
           ]}
         >
           <View style={styles.inputOuter}>
-            {/* Left icon */}
             <View style={styles.inputIconLeft}>
               <Ionicons name="sparkles-outline" size={18} color={C.brand} />
             </View>
-
             <TextInput
               placeholder="Ask Nova anything..."
               placeholderTextColor={C.meta}
@@ -384,18 +379,15 @@ const LLM = () => {
               onChangeText={setMessage}
               style={styles.textInput}
               multiline
-              maxLength={1000}
-              returnKeyType="default"
             />
-
-            {/* Send button */}
             <TouchableOpacity
               onPress={handleSendMessage}
-              disabled={sendDisabled}
-              activeOpacity={0.8}
+              disabled={!message.trim() || isPending}
               style={[
                 styles.sendBtn,
-                sendDisabled ? styles.sendBtnOff : styles.sendBtnOn,
+                !message.trim() || isPending
+                  ? styles.sendBtnOff
+                  : styles.sendBtnOn,
               ]}
             >
               {isPending ? (
@@ -405,14 +397,9 @@ const LLM = () => {
               )}
             </TouchableOpacity>
           </View>
-
-          <Text style={styles.inputHint}>
-            Nova may make mistakes. Verify important info.
-          </Text>
         </View>
       </KeyboardAvoidingView>
 
-      {/* Backdrop */}
       {chatsOpened && (
         <View style={[StyleSheet.absoluteFill, styles.backdrop]}>
           <Pressable
@@ -436,10 +423,9 @@ export default LLM;
 
 const styles = StyleSheet.create({
   flex1: { flex: 1 },
+  flex1Center: { flex: 1, justifyContent: "center", alignItems: "center" },
   root: { flex: 1, backgroundColor: C.surface },
   backdrop: { zIndex: 20 },
-
-  // Sidebar
   sidebar: {
     zIndex: 30,
     position: "absolute",
@@ -448,8 +434,6 @@ const styles = StyleSheet.create({
     left: 0,
     width: "80%",
   },
-
-  // Header
   header: {
     paddingHorizontal: 12,
     paddingVertical: 10,
@@ -459,10 +443,6 @@ const styles = StyleSheet.create({
     backgroundColor: C.white,
     borderBottomWidth: StyleSheet.hairlineWidth,
     borderBottomColor: C.border,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 3,
     elevation: 2,
   },
   headerCenter: { alignItems: "center" },
@@ -480,15 +460,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
-  // List
   listContent: { flexGrow: 1, paddingHorizontal: 16, paddingVertical: 20 },
-
-  // Bubbles
   bubbleRow: { marginBottom: 14, maxWidth: "88%", flexDirection: "row" },
   bubbleRowUser: { alignSelf: "flex-end", flexDirection: "row-reverse" },
   bubbleRowAssistant: { alignSelf: "flex-start" },
-
   avatar: {
     width: 30,
     height: 30,
@@ -506,7 +481,6 @@ const styles = StyleSheet.create({
   avatarText: { fontSize: 11, fontWeight: "900" },
   avatarTextUser: { color: C.white },
   avatarTextAssistant: { color: C.brand },
-
   bubbleWrap: { flex: 1 },
   bubble: {
     paddingHorizontal: 14,
@@ -532,10 +506,7 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   bubbleText: { fontSize: 15, lineHeight: 22 },
-  bubbleTextUser: { color: C.white },
-  bubbleTextAssistant: { color: C.primary },
   loadingDots: { paddingVertical: 2, alignItems: "flex-start" },
-
   timestamp: {
     fontSize: 10,
     color: C.meta,
@@ -545,50 +516,6 @@ const styles = StyleSheet.create({
   },
   timestampRight: { textAlign: "right" },
   timestampLeft: { textAlign: "left" },
-
-  // Empty state
-  emptyWrap: {
-    flex: 1,
-    alignItems: "center",
-    justifyContent: "center",
-    paddingHorizontal: 32,
-    paddingBottom: 60,
-  },
-  emptyInner: { alignItems: "center" },
-  emptyIconWrap: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: C.brand + "15",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-  },
-  emptyIcon: { fontSize: 24, color: C.brand },
-  emptyLabel: {
-    fontSize: 11,
-    fontWeight: "800",
-    color: C.meta,
-    textTransform: "uppercase",
-    letterSpacing: 3,
-    marginBottom: 8,
-  },
-  emptyName: {
-    fontSize: 32,
-    fontWeight: "900",
-    color: C.primary,
-    textAlign: "center",
-    marginBottom: 12,
-  },
-  emptyHint: {
-    fontSize: 15,
-    color: C.meta,
-    textAlign: "center",
-    lineHeight: 22,
-    fontWeight: "400",
-  },
-
-  // ── INPUT BAR ──────────────────────────────────────────────────────────────
   inputBar: {
     paddingHorizontal: 14,
     paddingTop: 10,
@@ -606,12 +533,6 @@ const styles = StyleSheet.create({
     paddingLeft: 12,
     paddingRight: 6,
     paddingVertical: 6,
-    // Focus glow handled via shadow — static since we can't do :focus in RN easily
-    shadowColor: C.brand,
-    shadowOffset: { width: 0, height: 0 },
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    elevation: 1,
   },
   inputIconLeft: {
     width: 28,
@@ -626,7 +547,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     lineHeight: 22,
     paddingVertical: 6,
-    maxHeight: 120, // allow multiline up to ~5 lines
+    maxHeight: 120,
   },
   sendBtn: {
     width: 38,
@@ -639,19 +560,6 @@ const styles = StyleSheet.create({
   },
   sendBtnOn: {
     backgroundColor: C.brand,
-    shadowColor: C.brand,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.35,
-    shadowRadius: 6,
-    elevation: 4,
   },
   sendBtnOff: { backgroundColor: C.borderStrong },
-  inputHint: {
-    fontSize: 10,
-    color: C.meta,
-    textAlign: "center",
-    marginTop: 6,
-    marginBottom: 2,
-    fontWeight: "500",
-  },
 });
