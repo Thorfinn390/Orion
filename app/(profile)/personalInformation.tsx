@@ -122,6 +122,7 @@ export default function PersonalInformationScreen() {
         });
       }
     } catch (error) {
+      console.log(error);
       Toast.show({
         type: "error",
         text1: "Network Error",
@@ -148,7 +149,7 @@ export default function PersonalInformationScreen() {
 
           <TouchableOpacity
             className={`bg-primaryBrand px-lg py-sm rounded-full shadow-lg ${
-              loading || formData.fullName === storeFullName
+              loading || formData.fullName.trim() === storeFullName
                 ? "opacity-50"
                 : "active:opacity-80"
             }`}

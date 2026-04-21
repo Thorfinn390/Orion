@@ -1,0 +1,156 @@
+{
+  "airport_layout": {
+    "landside": {
+      "non_negotiable": [
+        {
+          "facility": "Terminal 1 (Main Hall)",
+          "step": 1,
+          "description": "The primary entry point for all departing passengers, housing main transport links and entrance portals.",
+          "coordinates": { "lat": 25.2532, "lng": 55.3657 }
+        },
+        {
+          "facility": "Main Check-in & First Class Counters",
+          "step": 2,
+          "description": "Dedicated zones for document verification and boarding pass issuance, featuring specialized lanes for Platinum and Staff members.",
+          "coordinates": { "lat": 25.2535, "lng": 55.366 }
+        },
+        {
+          "facility": "Self-Service Baggage Drop",
+          "step": 3,
+          "description": "Automated kiosks for tagging and injecting luggage into the sorting system, including a dedicated belt for oversized items.",
+          "coordinates": { "lat": 25.2538, "lng": 55.3663 }
+        },
+        {
+          "facility": "Excess Baggage Cashier",
+          "step": 4,
+          "description": "Payment counter for luggage exceeding standard weight or piece limits.",
+          "coordinates": { "lat": 25.254, "lng": 55.3665 }
+        },
+        {
+          "facility": "Customer Service & Help Desk",
+          "step": 5,
+          "description": "Centralized information hub for passenger inquiries, wayfinding, and airport assistance.",
+          "coordinates": { "lat": 25.2542, "lng": 55.3668 }
+        }
+      ],
+      "amenities": [
+        {
+          "facility": "Executive Valet Parking",
+          "step": null,
+          "description": "Premium vehicle drop-off service located directly at the Terminal 1 Departure curb.",
+          "coordinates": { "lat": 25.2528, "lng": 55.3655 }
+        },
+        {
+          "facility": "Global Car Rental Lounge",
+          "step": null,
+          "description": "Hub for international car rental brands including Hertz, Avis, and Sixt.",
+          "coordinates": { "lat": 25.2525, "lng": 55.365 }
+        },
+        {
+          "facility": "Police Reception Office",
+          "step": null,
+          "description": "On-site security office for reporting lost items or legal documentation issues.",
+          "coordinates": { "lat": 25.2545, "lng": 55.367 }
+        },
+        {
+          "facility": "Planet TAX Refund",
+          "step": null,
+          "description": "Validation point for VAT refunds on goods purchased by international tourists.",
+          "coordinates": { "lat": 25.2548, "lng": 55.3672 }
+        },
+        {
+          "facility": "Airline Offices Cluster",
+          "step": null,
+          "description": "Administrative and ticketing offices for Air Blue, Air China, and partner carriers.",
+          "coordinates": { "lat": 25.255, "lng": 55.3675 }
+        }
+      ]
+    },
+    "the_boundary": [
+      {
+        "facility": "Departure Security Screening",
+        "step": 6,
+        "description": "Mandatory TSA-standard security checkpoint for carry-on screening and body scans.",
+        "coordinates": { "lat": 25.2555, "lng": 55.368 }
+      },
+      {
+        "facility": "Passport Control & Smart Gates",
+        "step": 7,
+        "description": "Immigration zone featuring biometric Smart Gates for rapid exit clearance.",
+        "coordinates": { "lat": 25.256, "lng": 55.3685 }
+      }
+    ],
+    "airside": {
+      "non_negotiable": [
+        {
+          "facility": "Main Concourses A & B Connector",
+          "step": 8,
+          "description": "Primary transit paths and automated people movers connecting the central hub to boarding zones.",
+          "coordinates": { "lat": 25.2565, "lng": 55.369 }
+        },
+        {
+          "facility": "Connection Desk & Security",
+          "step": 9,
+          "description": "Specialized checkpoint for transit passengers moving between international flights.",
+          "coordinates": { "lat": 25.257, "lng": 55.3695 }
+        },
+        {
+          "facility": "Departure Gate A12",
+          "step": 10,
+          "description": "Final holding area for passengers prior to aircraft entry.",
+          "coordinates": { "lat": 25.258, "lng": 55.3705 }
+        },
+        {
+          "facility": "Boarding Bridge P7",
+          "step": 11,
+          "description": "The physical jet bridge connecting the terminal gate to the aircraft door.",
+          "coordinates": { "lat": 25.2585, "lng": 55.371 }
+        }
+      ],
+      "amenities": [
+        {
+          "facility": "World Duty Free",
+          "step": null,
+          "description": "Large retail space offering tax-free cosmetics, spirits, and luxury confections.",
+          "coordinates": { "lat": 25.2562, "lng": 55.3688 }
+        },
+        {
+          "facility": "The Amber Lounge (Business Class)",
+          "step": null,
+          "description": "High-end lounge featuring buffet dining, showers, and quiet work pods.",
+          "coordinates": { "lat": 25.2575, "lng": 55.37 }
+        },
+        {
+          "facility": "Sleep n Fly Sleep Pods",
+          "step": null,
+          "description": "Compact soundproof cabins for short-term rest between long-haul flights.",
+          "coordinates": { "lat": 25.2578, "lng": 55.3702 }
+        },
+        {
+          "facility": "XpressSpa & Wellness",
+          "step": null,
+          "description": "Quick-service massage and nail treatments for travelers on the go.",
+          "coordinates": { "lat": 25.2568, "lng": 55.3692 }
+        },
+        {
+          "facility": "Game Space Esports Hub",
+          "step": null,
+          "description": "Gaming lounge equipped with high-spec PCs and latest consoles.",
+          "coordinates": { "lat": 25.2572, "lng": 55.3698 }
+        },
+        {
+          "facility": "Starbucks Coffee",
+          "step": null,
+          "description": "Global coffeehouse chain offering beverages and light snacks.",
+          "coordinates": { "lat": 25.2563, "lng": 55.3689 }
+        },
+        {
+          "facility": "Le Paname Bistro",
+          "step": null,
+          "description": "Authentic French sit-down restaurant overlooking the runway.",
+          "coordinates": { "lat": 25.2566, "lng": 55.3691 }
+        }
+      ]
+    }
+  }
+}
