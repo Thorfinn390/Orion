@@ -6,12 +6,13 @@ import {
   FileText,
   HelpCircle,
   LogOut,
+  Plane,
   Settings,
   ShieldCheck,
+  Ticket,
   User,
 } from "lucide-react-native";
 import React, { useCallback, useState } from "react";
-
 import {
   ActivityIndicator,
   ScrollView,
@@ -69,32 +70,20 @@ SettingItem.displayName = "SettingItem";
 export default function ProfileScreen() {
   const [loading, setLoading] = useState(false);
 
-  // Pull data and logout action from AuthStore
   const fullName = useAuthStore((state) => state.fullName);
   const email = useAuthStore((state) => state.email);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const userId = useAuthStore((state) => state.userId);
 
-  const goToSecurity = useCallback(
-    () => router.push("/(profile)/securityAndPassword"),
-    [],
-  );
-  const goToPersonal = useCallback(
-    () => router.push("/(profile)/personalInformation"),
-    [],
-  );
-
   const handleLogout = async () => {
     try {
-      console.log("hhh");
       setLoading(true);
-      console.log("Logging out user with ID:", userId);
       const response = await apiFetch(`/auth/logout/${userId}`, {
         method: "GET",
       });
 
+      // Check status strictly
       if (response.status === 200) {
-        console.log("h");
         await clearAuth();
         Toast.show({
           type: "success",
@@ -102,13 +91,14 @@ export default function ProfileScreen() {
           autoHide: true,
           visibilityTime: 2000,
         });
+        // replace ensures the profile route is swapped for login in the current stack
         router.replace("/(auth)/login");
       } else {
         const result = await response.json();
-        Toast.show({ type: "error", text1: result.message });
+        Toast.show({ type: "error", text1: result.message || "Logout failed" });
       }
     } catch (e) {
-      console.warn(e);
+      console.warn("Logout Error:", e);
       Toast.show({ type: "error", text1: "Error logging you out" });
     } finally {
       setLoading(false);
@@ -135,7 +125,6 @@ export default function ProfileScreen() {
     [],
   );
 
-  //test
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <ScrollView
@@ -143,6 +132,7 @@ export default function ProfileScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingTop: 20, paddingBottom: 60 }}
       >
+        {/* --- HEADER --- */}
         <View className="mb-xl px-1">
           <Text className="text-[12px] font-black text-meta uppercase tracking-[3px] mb-1">
             Account
@@ -152,6 +142,7 @@ export default function ProfileScreen() {
           </Text>
         </View>
 
+        {/* --- USER CARD --- */}
         <TouchableOpacity
           activeOpacity={0.9}
           onPress={goToPersonal}
@@ -173,6 +164,7 @@ export default function ProfileScreen() {
           </View>
         </TouchableOpacity>
 
+        {/* --- PREFERENCES SECTION --- */}
         <Text className="text-xs font-black text-meta uppercase tracking-[2px] mb-md ml-1">
           Preferences
         </Text>
@@ -187,8 +179,20 @@ export default function ProfileScreen() {
             label="Security & Password"
             onPress={goToSecurity}
           />
+          <SettingItem
+            icon={Ticket}
+            label="Your Flights"
+            onPress={goToYourFlights}
+          />
+          <SettingItem
+            icon={Plane}
+            label="Register Flight"
+            onPress={goToRegisterFlight}
+            isLast={true}
+          />
         </View>
 
+        {/* --- SUPPORT SECTION --- */}
         <Text className="text-xs font-black text-meta uppercase tracking-[2px] mb-md ml-1">
           Support
         </Text>
@@ -206,6 +210,7 @@ export default function ProfileScreen() {
           />
         </View>
 
+        {/* --- LOGOUT ACTION --- */}
         <TouchableOpacity
           onPress={handleLogout}
           disabled={loading}
