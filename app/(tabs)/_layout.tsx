@@ -4,7 +4,7 @@ import { Tabs } from "expo-router";
 import { Home, Map as MapIcon, User } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { Platform, TouchableOpacity } from "react-native";
-import { LogLevel,OneSignal } from "react-native-onesignal";
+import { LogLevel, OneSignal } from "react-native-onesignal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 OneSignal.Debug.setLogLevel(LogLevel.Verbose);
 
@@ -72,11 +72,9 @@ export default function TabLayout() {
               activeOpacity={0.7}
               style={style}
               onPress={(e) => {
-                // Trigger the haptic
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }
-                // Call the original navigation event
                 props.onPress?.(e);
               }}
             >
@@ -93,6 +91,15 @@ export default function TabLayout() {
           tabBarIcon: ({ color }) => <Home size={22} color={color} />,
         }}
       />
+      {/* --- NEW GUIDE TAB --- */}
+      <Tabs.Screen
+        name="guide" 
+        options={{
+          title: "Guide",
+          tabBarIcon: ({ color }) => <Sparkles size={22} color={color} />,
+        }}
+      />
+      {/* --------------------- */}
       <Tabs.Screen
         name="map"
         options={{

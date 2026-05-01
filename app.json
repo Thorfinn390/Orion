@@ -61,7 +61,8 @@
         {
           "mode": "development"
         }
-      ]
+      ],
+      "expo-asset"
     ],
     "experiments": {
       "typedRoutes": true,

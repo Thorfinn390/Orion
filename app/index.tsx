@@ -1,9 +1,18 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import { Redirect } from "expo-router";
-import { useEffect, useState } from "react";
+import React, { useEffect, useState } from "react";
 import { ImageBackground } from "react-native";
 
+
+
+//stuff
+// Include the OneSignal package
+
+
+
+//end stuff
 export default function Index() {
+  
   const [isLoading, setIsLoading] = useState(true);
   const initializeAuth = useAuthStore((state) => state.initializeAuth);
   const loggedIn = useAuthStore((state) => state.isLoggedIn);
