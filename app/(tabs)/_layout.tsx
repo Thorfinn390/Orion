@@ -1,7 +1,7 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
-import { Home, Map as MapIcon, User } from "lucide-react-native";
+import { Home, Map as MapIcon, Sparkles, User } from "lucide-react-native";
 import React, { useEffect } from "react";
 import { Platform, TouchableOpacity } from "react-native";
 import { LogLevel, OneSignal } from "react-native-onesignal";
