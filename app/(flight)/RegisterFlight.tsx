@@ -1,7 +1,12 @@
 import Ticket from "@/components/Flight/Ticket";
 import { useAuthStore } from "@/stores/useAuthStore";
+import {
+  RegisteredTicket,
+  useJourneySimulationStore,
+} from "@/stores/useJourneySimulationStore";
 import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
+import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -18,6 +23,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 interface FlightData {
+  id: string;
+  flightId?: string;
+  checklistItems?: RegisteredTicket["checklistItems"];
   flight: {
     flight_number: string;
     terminal: string | null;
@@ -35,7 +43,22 @@ interface FlightData {
   };
 }
 
+const PASSCODE_PATTERN = /^[A-Z]{6}\d{3}$/;
+const FLIGHT_NUMBER_PATTERN = /^[A-Z0-9]+$/;
+
+const formatFlightNumberInput = (value: string) =>
+  value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+const formatPasscodeInput = (value: string) => {
+  const normalized = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
+  const letters = normalized.replace(/[^A-Z]/g, "").slice(0, 6);
+  const numbers = normalized.replace(/\D/g, "").slice(0, 3);
+
+  return `${letters}${numbers}`;
+};
+
 const RegisterFlight = () => {
+  const queryClient = useQueryClient();
   const [flightNumber, setFlightNumber] = useState("");
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -43,12 +66,48 @@ const RegisterFlight = () => {
   const [ticketData, setTicketData] = useState<FlightData | null>(null);
 
   const fullName = useAuthStore((state) => state.fullName);
+  const registerTicket = useJourneySimulationStore(
+    (state) => state.registerTicket,
+  );
+
+  const toRegisteredTicket = (data: FlightData): RegisteredTicket => ({
+    userFlightId: data.id,
+    flightId: data.flightId,
+    flightNumber: data.flight.flight_number,
+    gate: data.flight.gate,
+    terminal: data.flight.terminal,
+    checklistItems: data.checklistItems,
+  });
 
   const handleRegistration = async () => {
+    const normalizedFlightNumber = formatFlightNumberInput(flightNumber);
+
+    if (!FLIGHT_NUMBER_PATTERN.test(normalizedFlightNumber)) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid flight number",
+        text2: "Use the airline code and number, e.g. ME201.",
+        autoHide: true,
+        visibilityTime: 3000,
+      });
+      return;
+    }
+
+    if (!PASSCODE_PATTERN.test(passcode)) {
+      Toast.show({
+        type: "error",
+        text1: "Invalid passcode",
+        text2: "Use six letters followed by three numbers, e.g. ABCDEF123.",
+        autoHide: true,
+        visibilityTime: 3000,
+      });
+      return;
+    }
+
     try {
       setLoading(true);
       const flightRegObj = {
-        flight_number: flightNumber,
+        flight_number: normalizedFlightNumber,
         passcode,
       };
 
@@ -75,6 +134,9 @@ const RegisterFlight = () => {
 
       if (result?.data) {
         setTicketData(result.data);
+        registerTicket(toRegisteredTicket(result.data));
+        queryClient.invalidateQueries({ queryKey: ["homeRegisteredFlights"] });
+        queryClient.invalidateQueries({ queryKey: ["userFlights"] });
         setShowTicket(true);
         setFlightNumber("");
         setPasscode("");
@@ -153,11 +215,14 @@ const RegisterFlight = () => {
               <View className="flex-row items-center bg-inputSurface rounded-2xl px-md border border-borderEmphasis h-14">
                 <Ionicons name="barcode-outline" size={20} color="#1568C4" />
                 <TextInput
-                  placeholder="e.g. MEA 204"
+                  placeholder="e.g. ME201"
                   placeholderTextColor="#7B8BAA"
                   value={flightNumber}
-                  onChangeText={setFlightNumber}
+                  onChangeText={(value) =>
+                    setFlightNumber(formatFlightNumberInput(value))
+                  }
                   autoCapitalize="characters"
+                  autoCorrect={false}
                   className="flex-1 text-navtab font-bold ml-sm text-base"
                 />
               </View>
@@ -175,12 +240,16 @@ const RegisterFlight = () => {
                   color="#1568C4"
                 />
                 <TextInput
-                  placeholder="••••••"
+                  placeholder="ABCDEF123"
                   placeholderTextColor="#7B8BAA"
                   value={passcode}
-                  onChangeText={setPasscode}
+                  onChangeText={(value) =>
+                    setPasscode(formatPasscodeInput(value))
+                  }
                   secureTextEntry
-                  keyboardType="numeric"
+                  autoCapitalize="characters"
+                  autoCorrect={false}
+                  maxLength={9}
                   className="flex-1 text-navtab font-bold ml-sm text-base"
                 />
               </View>
@@ -198,7 +267,7 @@ const RegisterFlight = () => {
                 <ActivityIndicator size="small" color="white" />
               ) : (
                 <Text className="text-white text-lg font-black uppercase tracking-widest mr-sm">
-                  Buy Ticket
+                  Register Ticket
                 </Text>
               )}
             </TouchableOpacity>
@@ -215,7 +284,6 @@ const RegisterFlight = () => {
           <Ticket
             onClose={() => {
               setShowTicket(false);
-              router.replace("/profile");
             }}
             data={ticketData as FlightData}
           />

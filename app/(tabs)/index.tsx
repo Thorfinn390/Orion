@@ -1,5 +1,12 @@
-import { Bell, Search, Sparkles } from "lucide-react-native";
-import React, { useEffect, useState } from "react";
+import {
+  RegisteredTicket,
+  useJourneySimulationStore,
+} from "@/stores/useJourneySimulationStore";
+import { apiFetch } from "@/utils/apiFetch";
+import { useQuery } from "@tanstack/react-query";
+import { router } from "expo-router";
+import { Bell, Search, Sparkles, Ticket } from "lucide-react-native";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
@@ -9,14 +16,86 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { JourneyTimeline } from "../../components/JourneyTimeline";
+import { JourneyChecklist } from "../../components/JourneyChecklist";
 import { ServicesGrid } from "../../components/ServicesGrid";
-import { TicketCard } from "../../components/TicketCard";
+import { HomeTicketFlight, TicketCard } from "../../components/TicketCard";
+import { useAuthStore } from "../../stores/useAuthStore";
+
+type FlightApiResponse = {
+  status?: boolean;
+  data?: Array<HomeTicketFlight & { checklistItems?: RegisteredTicket["checklistItems"] }>;
+};
 
 export default function HomeScreen() {
   const [loading, setLoading] = useState(true);
 
-  const token = "";
+  const fullName = useAuthStore((state) => state.fullName);
+  const email = useAuthStore((state) => state.email);
+  const registeredTicket = useJourneySimulationStore(
+    (state) => state.registeredTicket,
+  );
+  const registerTicket = useJourneySimulationStore(
+    (state) => state.registerTicket,
+  );
+  const startTicketSimulation = useJourneySimulationStore(
+    (state) => state.startTicketSimulation,
+  );
+  const welcomeName = useMemo(() => {
+    const trimmedName = fullName?.trim();
+    if (trimmedName) {
+      return trimmedName;
+    }
+
+    const emailName = email?.split("@")[0]?.trim();
+    return emailName || "traveler";
+  }, [email, fullName]);
+
+  const fetchFlights = async () => {
+    const response = await apiFetch("/flight", { method: "GET" });
+    const result = (await response.json()) as FlightApiResponse;
+
+    if (!response.ok || !result?.status) {
+      throw new Error("Failed to load registered tickets");
+    }
+
+    return result.data ?? [];
+  };
+
+  const { data: registeredFlights = [], isLoading: isTicketLoading } = useQuery({
+    queryKey: ["homeRegisteredFlights"],
+    queryFn: fetchFlights,
+    refetchInterval: 30000,
+  });
+
+  const currentTicket = useMemo(() => {
+    if (registeredFlights.length === 0) {
+      return null;
+    }
+
+    return (
+      registeredFlights.find(
+        (flight) => flight.userFlightId === registeredTicket?.userFlightId,
+      ) ?? registeredFlights[0]
+    );
+  }, [registeredFlights, registeredTicket?.userFlightId]);
+
+  useEffect(() => {
+    if (!currentTicket) {
+      return;
+    }
+
+    const ticket = {
+      userFlightId: currentTicket.userFlightId,
+      flightId: currentTicket.id,
+      flightNumber: currentTicket.flight_number,
+      gate: currentTicket.gate,
+      terminal: currentTicket.terminal,
+      checklistItems: currentTicket.checklistItems,
+    };
+
+    registerTicket(ticket);
+    startTicketSimulation(ticket);
+  }, [currentTicket, registerTicket, startTicketSimulation]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -25,9 +104,6 @@ export default function HomeScreen() {
 
     return () => clearTimeout(timer);
   }, []);
-  // if (token === "test") {
-  //   return <Redirect href="/login" />;
-  // }
   if (loading) {
     return (
       <SafeAreaView className="flex-1 bg-slate-50 justify-center items-center">
@@ -47,7 +123,7 @@ export default function HomeScreen() {
           <View>
             <Text className="text-3xl font-black text-slate-900">Voyager</Text>
             <Text className="text-slate-500 text-sm font-medium">
-              Welcome back, Alex!
+              Welcome back, {welcomeName}!
             </Text>
           </View>
           <View className="flex-row gap-3">
@@ -87,13 +163,40 @@ export default function HomeScreen() {
               SkyGuide AI
             </Text>
             <Text className="text-sm text-slate-700 italic leading-5">
-              &quot;Your flight EK 202 is on time. Terminal 3 is currently busy,
-              we recommend heading to the gate 45 mins early.&quot;
+              {currentTicket
+                ? `Your flight ${currentTicket.flight_number} is ${currentTicket.status?.toLowerCase() ?? "registered"}. Keep the checklist in order and head to ${currentTicket.gate ? `Gate ${currentTicket.gate}` : "your gate"} when prompted.`
+                : "Register a ticket to unlock live journey guidance and AR check-in."}
             </Text>
           </View>
         </TouchableOpacity>
 
-        <TicketCard />
+        {isTicketLoading ? (
+          <View className="bg-white rounded-[32px] w-full shadow-xl my-3 border border-slate-100 p-8 items-center">
+            <ActivityIndicator size="small" color="#4f46e5" />
+            <Text className="text-xs font-bold text-slate-400 mt-3 uppercase tracking-widest">
+              Loading ticket
+            </Text>
+          </View>
+        ) : currentTicket ? (
+          <TicketCard flight={currentTicket} passengerName={welcomeName} />
+        ) : (
+          <TouchableOpacity
+            onPress={() => router.push("/(flight)/RegisterFlight")}
+            activeOpacity={0.85}
+            className="bg-white rounded-[32px] w-full shadow-xl my-3 border border-slate-100 p-6"
+          >
+            <View className="w-12 h-12 bg-indigo-50 rounded-2xl items-center justify-center mb-4">
+              <Ticket size={24} color="#4f46e5" />
+            </View>
+            <Text className="text-xl font-black text-slate-900">
+              No registered ticket
+            </Text>
+            <Text className="text-sm text-slate-500 mt-2 leading-5">
+              Register your flight to generate your boarding card and journey
+              checklist.
+            </Text>
+          </TouchableOpacity>
+        )}
 
         <View className="mt-10 mb-6 flex-row justify-between items-end">
           <Text className="text-2xl font-black text-slate-900">
@@ -105,7 +208,7 @@ export default function HomeScreen() {
             </Text>
           </TouchableOpacity>
         </View>
-        <JourneyTimeline />
+        <JourneyChecklist />
 
         <ServicesGrid />
       </ScrollView>

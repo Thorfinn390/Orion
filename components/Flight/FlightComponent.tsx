@@ -1,7 +1,9 @@
+import { useJourneySimulationStore } from "@/stores/useJourneySimulationStore";
 import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
+import { router } from "expo-router";
 import React, { useState } from "react";
 import {
   ActivityIndicator,
@@ -22,6 +24,12 @@ export default function FlightComponent({ data }: FlightProps) {
   const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [password, setPassword] = useState("");
+  const registerTicket = useJourneySimulationStore(
+    (state) => state.registerTicket,
+  );
+  const startTicketSimulation = useJourneySimulationStore(
+    (state) => state.startTicketSimulation,
+  );
 
   const mutation = useMutation({
     mutationFn: async (password: string) => {
@@ -42,11 +50,34 @@ export default function FlightComponent({ data }: FlightProps) {
       setModalVisible(false);
       setPassword("");
       queryClient.invalidateQueries({ queryKey: ["userFlights"] });
+      queryClient.invalidateQueries({ queryKey: ["homeRegisteredFlights"] });
     },
     onError: (error: any) => {
       Toast.show({ type: "error", text1: "Error", text2: error.message });
     },
   });
+
+  const handleSimulation = () => {
+    const registeredTicket = {
+      userFlightId: data.userFlightId,
+      flightId: data.id,
+      flightNumber: data.flight_number,
+      gate: data.gate,
+      terminal: data.terminal,
+      checklistItems: data.checklistItems,
+    };
+
+    registerTicket(registeredTicket);
+    startTicketSimulation(registeredTicket);
+    router.push({
+      pathname: "/(tabs)/map",
+      params: {
+        mode: "journey",
+        userFlightId: data.userFlightId,
+        flightNumber: data.flight_number,
+      },
+    });
+  };
 
   return (
     <View className="bg-white p-lg rounded-[32px] border border-borderDefault mb-lg shadow-sm">
@@ -88,16 +119,28 @@ export default function FlightComponent({ data }: FlightProps) {
         </View>
       </View>
 
-      {/* Cancel Trigger */}
-      <TouchableOpacity
-        onPress={() => setModalVisible(true)}
-        className="flex-row items-center justify-center py-md"
-      >
-        <Ionicons name="trash-outline" size={16} color="#C84B4B" />
-        <Text className="text-red-600 font-bold text-xs uppercase tracking-widest ml-xs">
-          Cancel Flight
-        </Text>
-      </TouchableOpacity>
+      {/* Actions */}
+      <View className="flex-row gap-md pt-sm">
+        <TouchableOpacity
+          onPress={handleSimulation}
+          className="flex-1 flex-row items-center justify-center py-md bg-primaryBrand rounded-2xl"
+        >
+          <Ionicons name="navigate" size={16} color="white" />
+          <Text className="text-white font-black text-xs uppercase tracking-widest ml-xs">
+            Simulate
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          onPress={() => setModalVisible(true)}
+          className="flex-1 flex-row items-center justify-center py-md bg-red-50 rounded-2xl"
+        >
+          <Ionicons name="trash-outline" size={16} color="#C84B4B" />
+          <Text className="text-red-600 font-bold text-xs uppercase tracking-widest ml-xs">
+            Cancel
+          </Text>
+        </TouchableOpacity>
+      </View>
 
       {/* Cancellation Modal */}
       <Modal

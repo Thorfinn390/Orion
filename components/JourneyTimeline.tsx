@@ -1,42 +1,23 @@
+import { useJourneySimulationStore } from "@/stores/useJourneySimulationStore";
 import { CheckCircle2, Clock } from "lucide-react-native";
 import React from "react";
 import { Alert, Pressable, Text, View } from "react-native";
 
 export const JourneyTimeline = () => {
-  const steps = [
-    {
-      id: 1,
-      title: "Check-in",
-      time: "05:30 AM",
-      description: "Baggage dropped at Counter 42. Boarding pass issued.",
-      isCompleted: true,
-      isActive: false,
-    },
-    {
-      id: 2,
-      title: "Security Check",
-      time: "06:15 AM",
-      description: "Fast track security cleared in 8 minutes.",
-      isCompleted: true,
-      isActive: false,
-    },
-    {
-      id: 3,
-      title: "Boarding",
-      time: "07:45 AM",
-      description: "Gate B12 is now boarding Zone 1 & 2.",
-      isCompleted: false,
-      isActive: true,
-    },
-    {
-      id: 4,
-      title: "Takeoff",
-      time: "08:30 AM",
-      description: "Estimated departure on time.",
-      isCompleted: false,
-      isActive: false,
-    },
-  ];
+  const checklistItems = useJourneySimulationStore(
+    (state) => state.checklistItems,
+  );
+  const firstIncompleteId = checklistItems.find(
+    (item) => !item.isCompleted,
+  )?.id;
+  const steps = checklistItems.map((item) => ({
+    id: item.id,
+    title: item.title,
+    time: item.time,
+    description: item.description,
+    isCompleted: item.isCompleted,
+    isActive: item.id === firstIncompleteId,
+  }));
 
   const handleTimelineStep = (stepName: string) => {
     Alert.alert("Timeline Action", `Tapped on ${stepName}`);

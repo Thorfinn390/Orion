@@ -31,6 +31,7 @@ export default function YourFlights() {
   } = useQuery({
     queryKey: ["userFlights"],
     queryFn: fetchFlights,
+    refetchInterval: 30000,
   });
 
   const onRefresh = useCallback(() => {
