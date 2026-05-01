@@ -1,15 +1,49 @@
 import { useAuthStore } from "@/stores/useAuthStore";
 import * as Haptics from "expo-haptics";
 import { Tabs } from "expo-router";
-import { Home, Map as MapIcon, Sparkles, User } from "lucide-react-native"; // Added Sparkles
-import React from "react";
+import { Home, Map as MapIcon, User } from "lucide-react-native";
+import React, { useEffect } from "react";
 import { Platform, TouchableOpacity } from "react-native";
-import { OneSignal } from "react-native-onesignal";
+import { LogLevel, OneSignal } from "react-native-onesignal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
+OneSignal.Debug.setLogLevel(LogLevel.Verbose);
 
+
+        // Replace with your OneSignal App ID from Dashboard > Settings > Keys & IDs
+    
+        OneSignal.initialize('9b5533a6-6db4-42f5-a55e-d4d89b2e062d');
 export default function TabLayout() {
   const userId = useAuthStore((state) => state.userId);
-  OneSignal.login(userId!);
+  useEffect(() => {
+    if (userId) {
+      console.log("Syncing OneSignal with userId:", userId);
+      
+      // 1. Prompt permission
+      OneSignal.Notifications.requestPermission(true).then((success) => {
+        console.log("Permission granted:", success);
+        OneSignal.User.pushSubscription.optIn(); // Force the opt-in flag
+        
+        // Log this to see what OneSignal thinks your status is
+        console.log("Subscription ID:", OneSignal.User.pushSubscription.id);
+        console.log("Opted In:", OneSignal.User.pushSubscription.optedIn);
+      });
+      
+      // 2. Identify the user
+      OneSignal.login(userId);
+  
+      // 3. Setup foreground display
+      const foregroundHandler = (event) => {
+        console.log("Notification received in foreground");
+        event.getNotification().display();
+      };
+  
+      OneSignal.Notifications.addEventListener('foregroundWillDisplay', foregroundHandler);
+  
+      return () => {
+         OneSignal.Notifications.removeEventListener('foregroundWillDisplay', foregroundHandler);
+      };
+    }
+  }, [userId]);
   const insets = useSafeAreaInsets();
 
   return (
