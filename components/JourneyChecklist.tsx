@@ -9,7 +9,7 @@ import {
   RotateCcw,
 } from "lucide-react-native";
 import React, { useCallback } from "react";
-import { Pressable, Text, TouchableOpacity, View } from "react-native";
+import { Pressable, Switch, Text, TouchableOpacity, View } from "react-native";
 
 export const JourneyChecklist = () => {
   const queryClient = useQueryClient();
@@ -22,6 +22,15 @@ export const JourneyChecklist = () => {
   );
   const activeTarget = useJourneySimulationStore((state) => state.activeTarget);
   const isCheckedIn = useJourneySimulationStore((state) => state.isCheckedIn);
+  const automatedStateManagement = useJourneySimulationStore(
+    (state) => state.automatedStateManagement,
+  );
+  const pendingManualChecklistItemId = useJourneySimulationStore(
+    (state) => state.pendingManualChecklistItemId,
+  );
+  const setAutomatedStateManagement = useJourneySimulationStore(
+    (state) => state.setAutomatedStateManagement,
+  );
   const toggleChecklistItem = useJourneySimulationStore(
     (state) => state.toggleChecklistItem,
   );
@@ -58,6 +67,10 @@ export const JourneyChecklist = () => {
   }, [currentTicket?.userFlightId, queryClient]);
 
   const handleToggleChecklistItem = (itemId: JourneyChecklistItemId) => {
+    if (automatedStateManagement) {
+      return;
+    }
+
     toggleChecklistItem(itemId);
     void syncChecklistToBackend();
   };
@@ -66,6 +79,10 @@ export const JourneyChecklist = () => {
     resetChecklist();
     void syncChecklistToBackend();
   };
+
+  if (!currentTicket) {
+    return null;
+  }
 
   return (
     <View className="mt-8">
@@ -101,25 +118,60 @@ export const JourneyChecklist = () => {
           </Text>
         </View>
 
+        <View className="mt-md flex-row items-center justify-between rounded-2xl bg-inputSurface px-md py-sm">
+          <View className="flex-1 pr-md">
+            <Text className="text-xs font-black text-primary">
+              Automated State Management
+            </Text>
+            <Text className="text-[10px] font-bold text-meta mt-1">
+              {automatedStateManagement
+                ? "Geofence events complete tasks automatically."
+                : "Geofence events ask you to confirm tasks manually."}
+            </Text>
+          </View>
+          <Switch
+            value={automatedStateManagement}
+            onValueChange={setAutomatedStateManagement}
+            trackColor={{ false: "#cbd5e1", true: "#bfdbfe" }}
+            thumbColor={automatedStateManagement ? "#1568C4" : "#f8fafc"}
+          />
+        </View>
+
+        {pendingManualChecklistItemId ? (
+          <View className="mt-md rounded-2xl border border-nova/20 bg-nova/10 px-md py-sm">
+            <Text className="text-[10px] font-black uppercase tracking-widest text-nova">
+              Location Prompt
+            </Text>
+            <Text className="text-xs font-bold text-primary mt-1">
+              You reached the next checkpoint. Tap the highlighted item below
+              to confirm completion.
+            </Text>
+          </View>
+        ) : null}
+
       </View>
 
       {checklistItems.map((item, index) => {
         const isActive =
           activeTarget?.kind === "journey" && activeTarget.id === item.id;
+        const isPendingManual = pendingManualChecklistItemId === item.id;
         const isPreviousComplete =
           index === 0 || checklistItems[index - 1].isCompleted;
         const isLocked = !item.isCompleted && !isPreviousComplete;
+        const isPressDisabled = automatedStateManagement || isLocked;
 
         return (
           <Pressable
             key={item.id}
             onPress={() => handleToggleChecklistItem(item.id)}
-            disabled={isLocked}
+            disabled={isPressDisabled}
             className={`mb-md rounded-[28px] border-2 p-md ${
               item.isCompleted
                 ? "bg-white border-primaryBrand/20"
                 : isLocked
                   ? "bg-slate-50 border-borderDefault"
+                : isPendingManual
+                  ? "bg-nova/10 border-nova"
                 : isActive
                   ? "bg-nova/10 border-nova/30"
                   : "bg-white border-borderDefault"
@@ -186,6 +238,10 @@ export const JourneyChecklist = () => {
                           : "Done"
                         : isLocked
                           ? "Locked"
+                        : isPendingManual
+                          ? "Confirm"
+                        : automatedStateManagement
+                          ? "Auto"
                         : isActive
                           ? "Active"
                           : "Open"}

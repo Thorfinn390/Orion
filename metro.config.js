@@ -15,6 +15,8 @@ config.resolver.assetExts.push(
   "obj",
   "mtl",
   "arobject",
+  "riv",
+  "rive",
 );
 
 config.resolver.sourceExts = [

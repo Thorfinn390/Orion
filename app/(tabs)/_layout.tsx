@@ -8,6 +8,8 @@ import { LogLevel, OneSignal } from "react-native-onesignal";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
 OneSignal.Debug.setLogLevel(LogLevel.Verbose);
 
+const TabTouchableOpacity = TouchableOpacity as React.ComponentType<any>;
+
 
         // Replace with your OneSignal App ID from Dashboard > Settings > Keys & IDs
     
@@ -21,18 +23,23 @@ export default function TabLayout() {
       // 1. Prompt permission
       OneSignal.Notifications.requestPermission(true).then((success) => {
         console.log("Permission granted:", success);
-        OneSignal.User.pushSubscription.optIn(); // Force the opt-in flag
-        
-        // Log this to see what OneSignal thinks your status is
-        console.log("Subscription ID:", OneSignal.User.pushSubscription.id);
-        console.log("Opted In:", OneSignal.User.pushSubscription.optedIn);
+      OneSignal.User.pushSubscription.optIn(); // Force the opt-in flag
+
+        void OneSignal.User.pushSubscription.getIdAsync().then((id) => {
+          console.log("Subscription ID:", id);
+        });
+        void OneSignal.User.pushSubscription.getOptedInAsync().then(
+          (optedIn) => {
+            console.log("Opted In:", optedIn);
+          },
+        );
       });
       
       // 2. Identify the user
       OneSignal.login(userId);
   
       // 3. Setup foreground display
-      const foregroundHandler = (event) => {
+      const foregroundHandler = (event: any) => {
         console.log("Notification received in foreground");
         event.getNotification().display();
       };
@@ -67,11 +74,11 @@ export default function TabLayout() {
         tabBarButton: (props) => {
           const { children, style } = props;
           return (
-            <TouchableOpacity
+            <TabTouchableOpacity
               {...props}
               activeOpacity={0.7}
               style={style}
-              onPress={(e) => {
+              onPress={(e: any) => {
                 if (Platform.OS !== "web") {
                   Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Light);
                 }
@@ -79,7 +86,7 @@ export default function TabLayout() {
               }}
             >
               {children}
-            </TouchableOpacity>
+            </TabTouchableOpacity>
           );
         },
       }}

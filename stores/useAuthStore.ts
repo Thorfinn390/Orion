@@ -1,6 +1,12 @@
 import * as SecureStore from "expo-secure-store";
 import { create } from "zustand";
 
+type JwtIdentity = {
+  fullName: string | null;
+  email: string | null;
+  userId: string | null;
+};
+
 interface AuthState {
   fullName: string | null;
   email: string | null;
@@ -23,6 +29,101 @@ interface AuthState {
   clearAuth: () => Promise<void>;
   setIsLoggedIn: (status: boolean) => void;
 }
+
+const BASE64_CHARS =
+  "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+const decodeBase64Url = (value: string) => {
+  const normalized = value.replace(/-/g, "+").replace(/_/g, "/");
+  let buffer = 0;
+  let bits = 0;
+  let output = "";
+
+  for (const char of normalized) {
+    if (char === "=") {
+      break;
+    }
+
+    const index = BASE64_CHARS.indexOf(char);
+
+    if (index < 0) {
+      continue;
+    }
+
+    buffer = (buffer << 6) | index;
+    bits += 6;
+
+    if (bits >= 8) {
+      bits -= 8;
+      output += String.fromCharCode((buffer >> bits) & 0xff);
+    }
+  }
+
+  return output;
+};
+
+const decodeJwtPayload = (token?: string | null) => {
+  if (!token) {
+    return null;
+  }
+
+  const [, payload] = token.split(".");
+
+  if (!payload) {
+    return null;
+  }
+
+  try {
+    const decoded = decodeBase64Url(payload);
+    const utf8Decoded = decodeURIComponent(
+      decoded
+        .split("")
+        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, "0")}`)
+        .join(""),
+    );
+
+    return JSON.parse(utf8Decoded) as Record<string, unknown>;
+  } catch {
+    try {
+      return JSON.parse(decodeBase64Url(payload)) as Record<string, unknown>;
+    } catch {
+      return null;
+    }
+  }
+};
+
+const readStringClaim = (
+  payload: Record<string, unknown> | null,
+  keys: string[],
+) => {
+  for (const key of keys) {
+    const value = payload?.[key];
+
+    if (typeof value === "string" && value.trim()) {
+      return value.trim();
+    }
+  }
+
+  return null;
+};
+
+export const getAuthIdentityFromJwt = (
+  token?: string | null,
+): JwtIdentity => {
+  const payload = decodeJwtPayload(token);
+  const givenName = readStringClaim(payload, ["given_name", "firstName"]);
+  const familyName = readStringClaim(payload, ["family_name", "lastName"]);
+  const composedName = [givenName, familyName].filter(Boolean).join(" ");
+
+  return {
+    fullName:
+      readStringClaim(payload, ["fullName", "full_name", "name"]) ||
+      composedName ||
+      null,
+    email: readStringClaim(payload, ["email", "preferred_username"]),
+    userId: readStringClaim(payload, ["userId", "user_id", "id", "sub"]),
+  };
+};
 
 export const useAuthStore = create<AuthState>((set) => ({
   fullName: null,
@@ -73,19 +174,25 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   // Use this for Login/Signup to update everything in one go
   setAuth: async (payload: any) => {
+    const tokenIdentity = getAuthIdentityFromJwt(payload.accessToken);
+    const fullName = payload.fullName || tokenIdentity.fullName;
+    const email = payload.email || tokenIdentity.email;
+    const userId = payload.userId || tokenIdentity.userId;
+
     set({
-      fullName: payload.fullName,
-      email: payload.email,
+      fullName,
+      email,
       is_email_verified: payload.is_email_verified,
       is_2fa_enabled: payload.is_2fa_enabled,
       accessToken: payload.accessToken,
       refreshToken: payload.refreshToken,
-      userId: payload.userId,
+      userId,
+      isLoggedIn: Boolean(payload.accessToken),
     });
 
     await Promise.all([
-      SecureStore.setItemAsync("fullName", payload.fullName || ""),
-      SecureStore.setItemAsync("email", payload.email || ""),
+      SecureStore.setItemAsync("fullName", fullName || ""),
+      SecureStore.setItemAsync("email", email || ""),
       SecureStore.setItemAsync(
         "is_email_verified",
         String(payload.is_email_verified),
@@ -96,7 +203,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       ),
       SecureStore.setItemAsync("userToken", payload.accessToken || ""),
       SecureStore.setItemAsync("refreshToken", payload.refreshToken || ""),
-      SecureStore.setItem("userId", payload.userId || ""),
+      SecureStore.setItemAsync("userId", userId || ""),
     ]);
   },
 
@@ -119,15 +226,17 @@ export const useAuthStore = create<AuthState>((set) => ({
       SecureStore.getItemAsync("userId"),
     ]);
 
+    const tokenIdentity = getAuthIdentityFromJwt(accessToken);
+
     set({
-      fullName,
-      email,
+      fullName: fullName || tokenIdentity.fullName,
+      email: email || tokenIdentity.email,
       is_email_verified: is_email_verified === "true",
       is_2fa_enabled: is_2fa_enabled === "true",
       accessToken,
       refreshToken,
       isLoggedIn: accessToken ? true : false,
-      userId,
+      userId: userId || tokenIdentity.userId,
     });
   },
 

@@ -2,6 +2,7 @@ import { create } from "zustand";
 import {
   ARPosition,
   BackendChecklistItem,
+  FloorCoordinate,
   JourneyChecklistItem,
   JourneyChecklistItemId,
   MapMarkerLike,
@@ -9,9 +10,11 @@ import {
   TerminalServiceId,
   createChecklistItemsFromBackend,
   createDefaultChecklistItems,
-  distanceOnFloor,
+  distanceBetweenFloorCoordinates,
   findMarkerByAliases,
   getTerminalService,
+  targetPositionToFloorCoordinate,
+  toFloorCoordinate,
   toNavigationTargetFromJourneyItem,
   toNavigationTargetFromService,
 } from "@/utils/journeySimulation";
@@ -35,20 +38,29 @@ interface JourneySimulationState {
   checklistItems: JourneyChecklistItem[];
   currentRelativePosition: ARPosition | null;
   scannedQrCodeId: string | null;
+  automatedStateManagement: boolean;
+  pendingManualChecklistItemId: JourneyChecklistItemId | null;
   isCheckedIn: boolean;
   registerTicket: (ticket: RegisteredTicket) => void;
   hydrateChecklistItems: (items?: BackendChecklistItem[] | null) => void;
   startTicketSimulation: (ticket?: RegisteredTicket | null) => void;
-  startServiceNavigation: (serviceId: TerminalServiceId) => void;
+  startServiceNavigation: (
+    serviceId: TerminalServiceId,
+    poiCoordinates?: ARPosition,
+  ) => void;
   stopNavigation: () => void;
   setScannedQrCodeId: (qrCodeId: string) => void;
   setCurrentRelativePosition: (position: ARPosition) => void;
+  setAutomatedStateManagement: (enabled: boolean) => void;
   toggleChecklistItem: (itemId: JourneyChecklistItemId) => void;
   completeChecklistItem: (
     itemId: JourneyChecklistItemId,
     source: CompletionSource,
   ) => void;
   completeNearbyChecklistItems: (position: ARPosition) => JourneyChecklistItemId[];
+  completeNearbyChecklistItemsFromCoordinate: (
+    coordinate: FloorCoordinate,
+  ) => JourneyChecklistItemId[];
   syncTargetsFromMarkers: (markers: MapMarkerLike[]) => void;
   resetChecklist: () => void;
 }
@@ -82,6 +94,26 @@ const canCompleteChecklistItem = (
   return index === 0 || items[index - 1].isCompleted;
 };
 
+const findNearbyCompletableChecklistItem = (
+  items: JourneyChecklistItem[],
+  coordinate: FloorCoordinate,
+) => {
+  const nextItem = items.find((item) => !item.isCompleted);
+
+  if (!nextItem || !canCompleteChecklistItem(items, nextItem.id)) {
+    return null;
+  }
+
+  const targetCoordinate = targetPositionToFloorCoordinate(
+    nextItem.targetPosition,
+  );
+
+  return distanceBetweenFloorCoordinates(coordinate, targetCoordinate) <=
+    nextItem.radius
+    ? nextItem
+    : null;
+};
+
 const updateJourneyTarget = (
   activeTarget: NavigationTarget | null,
   checklistItems: JourneyChecklistItem[],
@@ -100,6 +132,8 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
     checklistItems: createDefaultChecklistItems(),
     currentRelativePosition: null,
     scannedQrCodeId: null,
+    automatedStateManagement: false,
+    pendingManualChecklistItemId: null,
     isCheckedIn: false,
 
     registerTicket: (ticket) => {
@@ -110,6 +144,7 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
       set({
         registeredTicket: ticket,
         checklistItems,
+        pendingManualChecklistItemId: null,
         isCheckedIn:
           checklistItems.find((item) => item.id === "check-in")?.isCompleted ??
           false,
@@ -121,6 +156,7 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
 
       set((state) => ({
         checklistItems,
+        pendingManualChecklistItemId: null,
         isCheckedIn:
           checklistItems.find((item) => item.id === "check-in")?.isCompleted ??
           false,
@@ -153,13 +189,14 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
         activeServiceId: null,
         activeTarget,
         checklistItems,
+        pendingManualChecklistItemId: null,
         isCheckedIn:
           checklistItems.find((item) => item.id === "check-in")?.isCompleted ??
           false,
       });
     },
 
-    startServiceNavigation: (serviceId) => {
+    startServiceNavigation: (serviceId, poiCoordinates) => {
       const service = getTerminalService(serviceId);
 
       if (!service) {
@@ -168,7 +205,10 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
 
       set({
         activeServiceId: service.id,
-        activeTarget: toNavigationTargetFromService(service),
+        activeTarget: {
+          ...toNavigationTargetFromService(service),
+          ...(poiCoordinates ? { position: poiCoordinates } : {}),
+        },
       });
     },
 
@@ -187,6 +227,15 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
       set({ currentRelativePosition: position });
     },
 
+    setAutomatedStateManagement: (enabled) => {
+      set({
+        automatedStateManagement: enabled,
+        pendingManualChecklistItemId: enabled
+          ? null
+          : get().pendingManualChecklistItemId,
+      });
+    },
+
     toggleChecklistItem: (itemId) => {
       const state = get();
       const targetIndex = getChecklistItemIndex(state.checklistItems, itemId);
@@ -197,7 +246,10 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
 
       const targetItem = state.checklistItems[targetIndex];
 
-      if (!targetItem.isCompleted && !canCompleteChecklistItem(state.checklistItems, itemId)) {
+      if (
+        !targetItem.isCompleted &&
+        !canCompleteChecklistItem(state.checklistItems, itemId)
+      ) {
         return;
       }
 
@@ -228,6 +280,10 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
         return {
           checklistItems,
           isCheckedIn,
+          pendingManualChecklistItemId:
+            current.pendingManualChecklistItemId === itemId
+              ? null
+              : current.pendingManualChecklistItemId,
           activeTarget: updateJourneyTarget(
             current.activeTarget,
             checklistItems,
@@ -257,6 +313,10 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
         return {
           checklistItems,
           isCheckedIn: itemId === "check-in" ? true : state.isCheckedIn,
+          pendingManualChecklistItemId:
+            state.pendingManualChecklistItemId === itemId
+              ? null
+              : state.pendingManualChecklistItemId,
           activeTarget: updateJourneyTarget(
             state.activeTarget,
             checklistItems,
@@ -267,19 +327,37 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
     },
 
     completeNearbyChecklistItems: (position) => {
-      const state = get();
-      const nextItem = state.checklistItems.find((item) => !item.isCompleted);
-      const completedIds =
-        nextItem &&
-        canCompleteChecklistItem(state.checklistItems, nextItem.id) &&
-        distanceOnFloor(position, nextItem.targetPosition) <= nextItem.radius
-          ? [nextItem.id]
-          : [];
+      return get().completeNearbyChecklistItemsFromCoordinate(
+        toFloorCoordinate(position),
+      );
+    },
 
-      if (completedIds.length === 0) {
-        set({ currentRelativePosition: position });
-        return completedIds;
+    completeNearbyChecklistItemsFromCoordinate: (coordinate) => {
+      const state = get();
+      const position: ARPosition = [coordinate.x, 0, coordinate.y];
+      const nearbyItem = findNearbyCompletableChecklistItem(
+        state.checklistItems,
+        coordinate,
+      );
+
+      if (!nearbyItem) {
+        set({
+          currentRelativePosition: position,
+          pendingManualChecklistItemId: null,
+        });
+        return [];
       }
+
+      if (!state.automatedStateManagement) {
+        set({
+          currentRelativePosition: position,
+          pendingManualChecklistItemId: nearbyItem.id,
+        });
+
+        return [];
+      }
+
+      const completedIds = [nearbyItem.id];
 
       set((current) => {
         const checklistItems: JourneyChecklistItem[] =
@@ -292,6 +370,7 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
         return {
           checklistItems,
           currentRelativePosition: position,
+          pendingManualChecklistItemId: null,
           isCheckedIn:
             current.isCheckedIn || completedIds.includes("check-in"),
           activeTarget: updateJourneyTarget(
@@ -357,6 +436,15 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
         return {
           checklistItems,
           activeTarget,
+          pendingManualChecklistItemId: state.pendingManualChecklistItemId
+            ? checklistItems.some(
+                (item) =>
+                  item.id === state.pendingManualChecklistItemId &&
+                  !item.isCompleted,
+              )
+              ? state.pendingManualChecklistItemId
+              : null
+            : null,
         };
       });
     },
@@ -368,6 +456,7 @@ export const useJourneySimulationStore = create<JourneySimulationState>(
       set({
         checklistItems,
         isCheckedIn: false,
+        pendingManualChecklistItemId: null,
         activeTarget:
           current.activeTarget?.kind === "journey"
             ? getNextIncompleteJourneyTarget(

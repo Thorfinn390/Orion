@@ -1,6 +1,6 @@
-import { Plane, QrCode } from "lucide-react-native";
+import { Navigation, Plane, QrCode } from "lucide-react-native";
 import React from "react";
-import { Text, View } from "react-native";
+import { Text, TouchableOpacity, View } from "react-native";
 
 export type HomeTicketFlight = {
   userFlightId: string;
@@ -26,6 +26,7 @@ export type HomeTicketFlight = {
 type TicketCardProps = {
   flight: HomeTicketFlight;
   passengerName: string;
+  onStartJourney?: () => void;
 };
 
 const formatFlightTime = (value?: string | null) => {
@@ -52,7 +53,11 @@ const getAirlineCode = (flightNumber: string) => {
 const normalizeStatus = (status?: string) =>
   status ? status.replace(/_/g, " ") : "Registered";
 
-export const TicketCard = ({ flight, passengerName }: TicketCardProps) => {
+export const TicketCard = ({
+  flight,
+  passengerName,
+  onStartJourney,
+}: TicketCardProps) => {
   const airlineCode = getAirlineCode(flight.flight_number);
   const departureTime = formatFlightTime(
     flight.expected_departure_time ?? flight.scheduled_departure_time,
@@ -186,6 +191,19 @@ export const TicketCard = ({ flight, passengerName }: TicketCardProps) => {
             {barcode}
           </Text>
         </View>
+
+        {onStartJourney ? (
+          <TouchableOpacity
+            onPress={onStartJourney}
+            activeOpacity={0.85}
+            className="mt-6 h-14 rounded-2xl bg-indigo-600 flex-row items-center justify-center shadow-lg shadow-indigo-200"
+          >
+            <Navigation size={18} color="white" />
+            <Text className="ml-2 text-sm font-black uppercase tracking-widest text-white">
+              Start Journey
+            </Text>
+          </TouchableOpacity>
+        ) : null}
       </View>
     </View>
   );

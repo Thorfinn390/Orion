@@ -4,7 +4,10 @@ import {
   RegisteredTicket,
   useJourneySimulationStore,
 } from "@/stores/useJourneySimulationStore";
-import { apiFetch } from "@/utils/apiFetch";
+import {
+  TicketSimulationService,
+  toRegisteredTicket,
+} from "@/utils/TicketSimulationService";
 import { Ionicons } from "@expo/vector-icons";
 import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
@@ -70,17 +73,9 @@ const RegisterFlight = () => {
     (state) => state.registerTicket,
   );
 
-  const toRegisteredTicket = (data: FlightData): RegisteredTicket => ({
-    userFlightId: data.id,
-    flightId: data.flightId,
-    flightNumber: data.flight.flight_number,
-    gate: data.flight.gate,
-    terminal: data.flight.terminal,
-    checklistItems: data.checklistItems,
-  });
-
   const handleRegistration = async () => {
     const normalizedFlightNumber = formatFlightNumberInput(flightNumber);
+    const normalizedPasscode = formatPasscodeInput(passcode);
 
     if (!FLIGHT_NUMBER_PATTERN.test(normalizedFlightNumber)) {
       Toast.show({
@@ -93,7 +88,7 @@ const RegisterFlight = () => {
       return;
     }
 
-    if (!PASSCODE_PATTERN.test(passcode)) {
+    if (!PASSCODE_PATTERN.test(normalizedPasscode)) {
       Toast.show({
         type: "error",
         text1: "Invalid passcode",
@@ -108,41 +103,29 @@ const RegisterFlight = () => {
       setLoading(true);
       const flightRegObj = {
         flight_number: normalizedFlightNumber,
-        passcode,
+        passcode: normalizedPasscode,
       };
 
-      const response = await apiFetch("/flight/associate", {
-        method: "POST",
-        body: JSON.stringify(flightRegObj),
-      });
+      const { raw, ticket } = await TicketSimulationService.registerFlight(
+        flightRegObj,
+      );
 
-      if (!response.ok) {
-        const result = await response.json();
-
-        Toast.show({
-          type: "error",
-          text1: "Failed to Register",
-          text2: result?.message,
-          autoHide: true,
-          visibilityTime: 3000,
-        });
-
-        return;
-      }
-
-      const result = await response.json();
-
-      if (result?.data) {
-        setTicketData(result.data);
-        registerTicket(toRegisteredTicket(result.data));
-        queryClient.invalidateQueries({ queryKey: ["homeRegisteredFlights"] });
-        queryClient.invalidateQueries({ queryKey: ["userFlights"] });
-        setShowTicket(true);
-        setFlightNumber("");
-        setPasscode("");
-      }
+      setTicketData(raw as FlightData);
+      registerTicket(ticket);
+      queryClient.invalidateQueries({ queryKey: ["homeRegisteredFlights"] });
+      queryClient.invalidateQueries({ queryKey: ["userFlights"] });
+      queryClient.invalidateQueries({ queryKey: ["guideRegisteredFlights"] });
+      setShowTicket(true);
+      setFlightNumber("");
+      setPasscode("");
     } catch (e) {
-      console.log(e);
+      Toast.show({
+        type: "error",
+        text1: "Failed to Register",
+        text2: e instanceof Error ? e.message : "Please try again.",
+        autoHide: true,
+        visibilityTime: 3000,
+      });
     } finally {
       setLoading(false);
     }
@@ -272,12 +255,28 @@ const RegisterFlight = () => {
               )}
             </TouchableOpacity>
 
-            <View className="items-center mt-lg">
-              <Text className="text-meta text-[10px] font-bold uppercase tracking-widest">
-                Start Your Journey Here!
-              </Text>
-            </View>
+          <View className="items-center mt-lg">
+            <Text className="text-meta text-[10px] font-bold uppercase tracking-widest">
+              Start Your Journey Here!
+            </Text>
           </View>
+
+          {ticketData ? (
+            <TouchableOpacity
+              onPress={() =>
+                TicketSimulationService.startJourney(
+                  toRegisteredTicket(ticketData),
+                )
+              }
+              activeOpacity={0.85}
+              className="mt-md bg-primaryBrand h-14 rounded-[22px] flex-row items-center justify-center shadow-lg"
+            >
+              <Text className="text-white text-sm font-black uppercase tracking-widest">
+                Start Journey
+              </Text>
+            </TouchableOpacity>
+          ) : null}
+        </View>
         </ScrollView>
 
         {showTicket && (

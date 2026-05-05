@@ -1,4 +1,4 @@
-import { useJourneySimulationStore } from "@/stores/useJourneySimulationStore";
+import { TicketSimulationService } from "@/utils/TicketSimulationService";
 import { TerminalService } from "@/utils/journeySimulation";
 import { Ionicons } from "@expo/vector-icons";
 import { router } from "expo-router";
@@ -28,19 +28,8 @@ export const TerminalServiceScreen = ({
   service,
   Icon,
 }: TerminalServiceScreenProps) => {
-  const startServiceNavigation = useJourneySimulationStore(
-    (state) => state.startServiceNavigation,
-  );
-
   const handleFindOnMap = () => {
-    startServiceNavigation(service.id);
-    router.push({
-      pathname: "/(tabs)/map",
-      params: {
-        mode: "service",
-        serviceId: service.id,
-      },
-    });
+    TicketSimulationService.startServiceAR(service.id);
   };
 
   return (
@@ -168,9 +157,9 @@ export const TerminalServiceScreen = ({
           activeOpacity={0.85}
           className="bg-navtab h-16 rounded-[24px] flex-row items-center justify-center shadow-lg"
         >
-          <Navigation size={20} color="white" />
+            <Navigation size={20} color="white" />
           <Text className="text-white text-sm font-black uppercase tracking-widest ml-sm">
-            Find on Map
+            Show in AR
           </Text>
         </TouchableOpacity>
       </ScrollView>

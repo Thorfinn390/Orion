@@ -5,7 +5,7 @@ export interface Flight {
   airline: string;
   airlineCode: string;
   flightNumber: string;
-  status: "On Time" | "Delayed" | "Boarding" | "Departed";
+  status: string;
   from: string;
   fromCity: string;
   to: string;

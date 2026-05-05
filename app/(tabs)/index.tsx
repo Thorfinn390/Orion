@@ -2,10 +2,11 @@ import {
   RegisteredTicket,
   useJourneySimulationStore,
 } from "@/stores/useJourneySimulationStore";
+import { TicketSimulationService } from "@/utils/TicketSimulationService";
 import { apiFetch } from "@/utils/apiFetch";
 import { useQuery } from "@tanstack/react-query";
 import { router } from "expo-router";
-import { Bell, Search, Sparkles, Ticket } from "lucide-react-native";
+import { Bell, Search, Ticket } from "lucide-react-native";
 import React, { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
@@ -17,13 +18,19 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { JourneyChecklist } from "../../components/JourneyChecklist";
+import { NovaAvatar } from "../../components/NovaAvatar";
 import { ServicesGrid } from "../../components/ServicesGrid";
 import { HomeTicketFlight, TicketCard } from "../../components/TicketCard";
-import { useAuthStore } from "../../stores/useAuthStore";
+import {
+  getAuthIdentityFromJwt,
+  useAuthStore,
+} from "../../stores/useAuthStore";
 
 type FlightApiResponse = {
   status?: boolean;
-  data?: Array<HomeTicketFlight & { checklistItems?: RegisteredTicket["checklistItems"] }>;
+  data?: (HomeTicketFlight & {
+    checklistItems?: RegisteredTicket["checklistItems"];
+  })[];
 };
 
 export default function HomeScreen() {
@@ -31,24 +38,28 @@ export default function HomeScreen() {
 
   const fullName = useAuthStore((state) => state.fullName);
   const email = useAuthStore((state) => state.email);
+  const accessToken = useAuthStore((state) => state.accessToken);
   const registeredTicket = useJourneySimulationStore(
     (state) => state.registeredTicket,
   );
   const registerTicket = useJourneySimulationStore(
     (state) => state.registerTicket,
   );
-  const startTicketSimulation = useJourneySimulationStore(
-    (state) => state.startTicketSimulation,
-  );
   const welcomeName = useMemo(() => {
+    const jwtIdentity = getAuthIdentityFromJwt(accessToken);
     const trimmedName = fullName?.trim();
     if (trimmedName) {
       return trimmedName;
     }
 
+    if (jwtIdentity.fullName) {
+      return jwtIdentity.fullName;
+    }
+
     const emailName = email?.split("@")[0]?.trim();
-    return emailName || "traveler";
-  }, [email, fullName]);
+    const jwtEmailName = jwtIdentity.email?.split("@")[0]?.trim();
+    return emailName || jwtEmailName || "traveler";
+  }, [accessToken, email, fullName]);
 
   const fetchFlights = async () => {
     const response = await apiFetch("/flight", { method: "GET" });
@@ -94,8 +105,7 @@ export default function HomeScreen() {
     };
 
     registerTicket(ticket);
-    startTicketSimulation(ticket);
-  }, [currentTicket, registerTicket, startTicketSimulation]);
+  }, [currentTicket, registerTicket]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -113,7 +123,25 @@ export default function HomeScreen() {
   }
 
   const openFullDetails = () => {
-    Alert.alert("Journey Details", "Opening full journey details...");
+    router.push({
+      pathname: "/(flight)/JourneyChecklist",
+    } as never);
+  };
+
+  const handleStartJourney = () => {
+    if (!currentTicket) {
+      router.push("/(flight)/RegisterFlight");
+      return;
+    }
+
+    TicketSimulationService.startJourney({
+      userFlightId: currentTicket.userFlightId,
+      flightId: currentTicket.id,
+      flightNumber: currentTicket.flight_number,
+      gate: currentTicket.gate,
+      terminal: currentTicket.terminal,
+      checklistItems: currentTicket.checklistItems,
+    });
   };
 
   return (
@@ -155,9 +183,7 @@ export default function HomeScreen() {
           }
           className="bg-white border border-indigo-50 p-4 rounded-[30px] shadow-sm flex-row items-start gap-4 mb-8"
         >
-          <View className="bg-indigo-50 p-2 rounded-xl">
-            <Sparkles size={18} color="#4f46e5" />
-          </View>
+          <NovaAvatar size={42} />
           <View className="flex-1">
             <Text className="text-[10px] font-bold text-indigo-400 uppercase tracking-widest mb-1">
               SkyGuide AI
@@ -178,7 +204,11 @@ export default function HomeScreen() {
             </Text>
           </View>
         ) : currentTicket ? (
-          <TicketCard flight={currentTicket} passengerName={welcomeName} />
+          <TicketCard
+            flight={currentTicket}
+            passengerName={welcomeName}
+            onStartJourney={handleStartJourney}
+          />
         ) : (
           <TouchableOpacity
             onPress={() => router.push("/(flight)/RegisterFlight")}
@@ -198,17 +228,21 @@ export default function HomeScreen() {
           </TouchableOpacity>
         )}
 
-        <View className="mt-10 mb-6 flex-row justify-between items-end">
-          <Text className="text-2xl font-black text-slate-900">
-            Your Journey
-          </Text>
-          <TouchableOpacity onPress={openFullDetails}>
-            <Text className="text-xs font-bold text-indigo-600">
-              Full Details
-            </Text>
-          </TouchableOpacity>
-        </View>
-        <JourneyChecklist />
+        {currentTicket ? (
+          <>
+            <View className="mt-10 mb-6 flex-row justify-between items-end">
+              <Text className="text-2xl font-black text-slate-900">
+                Your Journey
+              </Text>
+              <TouchableOpacity onPress={openFullDetails}>
+                <Text className="text-xs font-bold text-indigo-600">
+                  Full Details
+                </Text>
+              </TouchableOpacity>
+            </View>
+            <JourneyChecklist />
+          </>
+        ) : null}
 
         <ServicesGrid />
       </ScrollView>

@@ -1,4 +1,5 @@
 import FloatingAIButton from "@/components/AI/FloatingAIButton";
+import { queueNovaReactionFromNotification } from "@/utils/novaReactions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import { router, Stack, usePathname } from "expo-router";
@@ -42,6 +43,29 @@ export default function RootLayout() {
     // In production, consider using an in-app message instead for better opt-in rates.
 
     OneSignal.Notifications.requestPermission(false);
+
+    const foregroundReactionHandler = (event: any) => {
+      const notification = event.getNotification?.() ?? event.notification;
+      queueNovaReactionFromNotification(notification);
+    };
+
+    const clickReactionHandler = (event: any) => {
+      queueNovaReactionFromNotification(event.notification);
+    };
+
+    OneSignal.Notifications.addEventListener(
+      "foregroundWillDisplay",
+      foregroundReactionHandler,
+    );
+    OneSignal.Notifications.addEventListener("click", clickReactionHandler);
+
+    return () => {
+      OneSignal.Notifications.removeEventListener(
+        "foregroundWillDisplay",
+        foregroundReactionHandler,
+      );
+      OneSignal.Notifications.removeEventListener("click", clickReactionHandler);
+    };
 
   }, []); 
   const pathname = usePathname();

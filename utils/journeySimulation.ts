@@ -1,5 +1,15 @@
 export type ARPosition = [number, number, number];
 
+export type FloorCoordinate = {
+  x: number;
+  y: number;
+};
+
+export type GeoCoordinate = {
+  latitude: number;
+  longitude: number;
+};
+
 export type JourneyChecklistItemId =
   | "check-in"
   | "security"
@@ -70,6 +80,18 @@ export type MapMarkerLike = {
 };
 
 export const QR_ANCHOR_ID = "orion_qr_target";
+
+export const DEFAULT_AIRPORT_COORDINATE: GeoCoordinate = {
+  latitude: 25.2532,
+  longitude: 55.3657,
+};
+
+export const AIRPORT_ZONE_POLYGON: GeoCoordinate[] = [
+  { latitude: 25.2522, longitude: 55.3648 },
+  { latitude: 25.2592, longitude: 55.3648 },
+  { latitude: 25.2592, longitude: 55.3717 },
+  { latitude: 25.2522, longitude: 55.3717 },
+];
 
 export const DEFAULT_JOURNEY_CHECKLIST_ITEMS: JourneyChecklistItem[] = [
   {
@@ -233,8 +255,56 @@ export const distanceOnFloor = (a: ARPosition, b: ARPosition) => {
   return Math.sqrt(x * x + z * z);
 };
 
+export const toFloorCoordinate = (position: ARPosition): FloorCoordinate => ({
+  x: position[0],
+  y: position[2],
+});
+
+export const targetPositionToFloorCoordinate = (
+  position: ARPosition,
+): FloorCoordinate => ({
+  x: position[0],
+  y: position[2],
+});
+
+export const distanceBetweenFloorCoordinates = (
+  a: FloorCoordinate,
+  b: FloorCoordinate,
+) => {
+  const x = a.x - b.x;
+  const y = a.y - b.y;
+
+  return Math.sqrt(x * x + y * y);
+};
+
 export const formatARPosition = (position: ARPosition) =>
   `x ${position[0].toFixed(2)} / y ${position[2].toFixed(2)}`;
+
+export const isGeoCoordinateInPolygon = (
+  point: GeoCoordinate,
+  polygon: GeoCoordinate[],
+) => {
+  let isInside = false;
+
+  for (let i = 0, j = polygon.length - 1; i < polygon.length; j = i++) {
+    const current = polygon[i];
+    const previous = polygon[j];
+    const intersects =
+      current.longitude > point.longitude !==
+        previous.longitude > point.longitude &&
+      point.latitude <
+        ((previous.latitude - current.latitude) *
+          (point.longitude - current.longitude)) /
+          (previous.longitude - current.longitude) +
+          current.latitude;
+
+    if (intersects) {
+      isInside = !isInside;
+    }
+  }
+
+  return isInside;
+};
 
 const normalizeLabel = (value: string) =>
   value
