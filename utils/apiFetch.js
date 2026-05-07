@@ -26,6 +26,7 @@ export const apiFetch = async (endpoint, options = {}) => {
       const refreshResponse = await fetch(`${BASE_URL}/auth/refresh-token`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        signal: options.signal,
         body: JSON.stringify({ refresh_token: refreshToken }),
       });
 
