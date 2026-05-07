@@ -127,13 +127,26 @@ export const changeAccountPassword = async (passwords: PasswordPayload) => {
 };
 
 export const startTwoFactorChange = async (nextEnabled: boolean) => {
+  console.log("Starting two-factor change. Next enabled:", nextEnabled);
+  // const response = await apiFetchWithTimeout(
+  //   nextEnabled ? SECURITY_ENDPOINTS.enable2FA : SECURITY_ENDPOINTS.disable2FA,
+  //   {
+  //     method: "POST",
+  //   },
+  //   EMAIL_REQUEST_TIMEOUT_MS,
+  // );
   const response = await apiFetchWithTimeout(
     nextEnabled ? SECURITY_ENDPOINTS.enable2FA : SECURITY_ENDPOINTS.disable2FA,
     {
       method: "POST",
+      headers: {
+        "Content-Type": "application/json", // Ensure backend knows it's JSON
+      },
+      body: JSON.stringify({}), // <-- ADD THIS: Forces React Native to send the POST request correctly
     },
     EMAIL_REQUEST_TIMEOUT_MS,
   );
+  console.log("Two-factor change response:", response);
   const payload = await readApiPayload(response);
 
   assertApiSuccess(

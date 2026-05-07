@@ -34,19 +34,40 @@ const getParamValue = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
 export default function TwoFactorConfirmScreen() {
+  // const router = useRouter();
+  // const params = useLocalSearchParams();
+  // const stored2FAState = useAuthStore((state) => state.is_2fa_enabled);
+  // const set2FAEnabled = useAuthStore((state) => state.setIs2faEnabled);
+
+  // const actionParam = getParamValue(params.action) as TwoFactorAction | undefined;
+  // const contactMethod = getParamValue(params.contactMethod) || "your email";
+  // const action: TwoFactorAction =
+  //   actionParam === "enable" || actionParam === "disable"
+  //     ? actionParam
+  //     : stored2FAState
+  //       ? "disable"
+  //       : "enable";
+  // const nextEnabled = action === "enable";
   const router = useRouter();
-  const params = useLocalSearchParams();
+  
+  // By passing the expected type here, you tell TypeScript these are strings (or undefined)
+  // which removes the "string | string[]" type issue and the need for getParamValue.
+  const params = useLocalSearchParams<{ action?: string; contactMethod?: string }>();
+  
   const stored2FAState = useAuthStore((state) => state.is_2fa_enabled);
   const set2FAEnabled = useAuthStore((state) => state.setIs2faEnabled);
 
-  const actionParam = getParamValue(params.action) as TwoFactorAction | undefined;
-  const contactMethod = getParamValue(params.contactMethod) || "your email";
+  // Directly access params without getParamValue
+  const actionParam = params.action as TwoFactorAction | undefined;
+  const contactMethod = params.contactMethod || "your email";
+  
   const action: TwoFactorAction =
     actionParam === "enable" || actionParam === "disable"
       ? actionParam
       : stored2FAState
         ? "disable"
         : "enable";
+        
   const nextEnabled = action === "enable";
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
