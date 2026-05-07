@@ -1,212 +1,251 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import { apiFetch } from "@/utils/apiFetch";
-import { Ionicons } from "@expo/vector-icons";
-import { useLocalSearchParams, useRouter } from "expo-router";
-import { useEffect, useRef, useState } from "react";
 import {
-    BackHandler,
-    KeyboardAvoidingView,
-    Platform,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View
+  confirmTwoFactorChange,
+  startTwoFactorChange,
+} from "@/utils/securityApi";
+import { useLocalSearchParams, useRouter } from "expo-router";
+import {
+  ArrowRight,
+  ChevronLeft,
+  Clock3,
+  RotateCcw,
+  ShieldCheck,
+} from "lucide-react-native";
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  ActivityIndicator,
+  Alert,
+  BackHandler,
+  KeyboardAvoidingView,
+  Platform,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Toast from "react-native-toast-message";
 
 const OTP_LENGTH = 6;
+const OTP_SECONDS = 594;
 
-export default function OTPScreen() {
-  const { contactMethod, password } = useLocalSearchParams();
+type TwoFactorAction = "enable" | "disable";
+
+const getParamValue = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
+
+export default function TwoFactorConfirmScreen() {
   const router = useRouter();
+  const params = useLocalSearchParams();
+  const stored2FAState = useAuthStore((state) => state.is_2fa_enabled);
+  const set2FAEnabled = useAuthStore((state) => state.setIs2faEnabled);
+
+  const actionParam = getParamValue(params.action) as TwoFactorAction | undefined;
+  const contactMethod = getParamValue(params.contactMethod) || "your email";
+  const action: TwoFactorAction =
+    actionParam === "enable" || actionParam === "disable"
+      ? actionParam
+      : stored2FAState
+        ? "disable"
+        : "enable";
+  const nextEnabled = action === "enable";
+
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(""));
-  const [seconds, setSeconds] = useState(594);
+  const [seconds, setSeconds] = useState(OTP_SECONDS);
   const [focusedIndex, setFocusedIndex] = useState<number | null>(null);
+  const [loading, setLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const inputs = useRef<(TextInput | null)[]>([]);
-  const set2FAEnabled = useAuthStore((state) => state.setIs2faEnabled);
-  const [loading, setLoading] = useState(false);
-  let is2FAEnabledStored = useAuthStore((state) => state.is_2fa_enabled);
-  useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.replace("/profile");
-      return true;
-    });
-    return () => subscription.remove();
-  }, []);
 
   useEffect(() => {
-    if (seconds === 0) return;
-    const interval = setInterval(() => setSeconds((s) => s - 1), 1000);
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      router.replace("/(profile)/securityAndPassword");
+      return true;
+    });
+
+    return () => subscription.remove();
+  }, [router]);
+
+  useEffect(() => {
+    if (seconds === 0) {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setSeconds((current) => current - 1);
+    }, 1000);
+
     return () => clearInterval(interval);
   }, [seconds]);
 
-  const formatTime = (s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
-  };
+  const screenCopy = useMemo(
+    () => ({
+      title: nextEnabled ? "Enable 2FA" : "Disable 2FA",
+      subtitle: nextEnabled
+        ? "Enter the verification code we sent before two-factor authentication is enabled."
+        : "Enter the verification code we sent before two-factor authentication is disabled.",
+      successTitle: nextEnabled ? "2FA Enabled" : "2FA Disabled",
+      successMessage: nextEnabled
+        ? "Two-factor authentication is now protecting your account."
+        : "Two-factor authentication has been disabled for your account.",
+      submitLabel: nextEnabled ? "Enable Protection" : "Disable 2FA",
+    }),
+    [nextEnabled],
+  );
 
-  const handleChange = (text: string, index: number) => {
+  const formatTime = useCallback((value: number) => {
+    const minutes = Math.floor(value / 60);
+    const remainingSeconds = value % 60;
+
+    return `${String(minutes).padStart(2, "0")}:${String(
+      remainingSeconds,
+    ).padStart(2, "0")}`;
+  }, []);
+
+  const handleChange = useCallback((text: string, index: number) => {
     const digit = text.replace(/[^0-9]/g, "").slice(-1);
-    const newOtp = [...otp];
-    newOtp[index] = digit;
-    setOtp(newOtp);
+
+    setOtp((current) => {
+      const nextOtp = [...current];
+      nextOtp[index] = digit;
+      return nextOtp;
+    });
+
     if (digit && index < OTP_LENGTH - 1) {
       inputs.current[index + 1]?.focus();
     }
-  };
+  }, []);
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
-      const newOtp = [...otp];
-      newOtp[index - 1] = "";
-      setOtp(newOtp);
-      inputs.current[index - 1]?.focus();
+  const handleKeyPress = useCallback((event: any, index: number) => {
+    if (event.nativeEvent.key !== "Backspace" || otp[index] || index === 0) {
+      return;
     }
-  };
 
-  const handleConfirm = async () => {
+    setOtp((current) => {
+      const nextOtp = [...current];
+      nextOtp[index - 1] = "";
+      return nextOtp;
+    });
+    inputs.current[index - 1]?.focus();
+  }, [otp]);
+
+  const handleConfirm = useCallback(async () => {
+    const otpString = otp.join("");
+
+    if (otpString.length !== OTP_LENGTH) {
+      Alert.alert("Invalid Code", "Please enter the full verification code.");
+      return;
+    }
+
     try {
-     
       setLoading(true);
-      const otpString = otp.join("");
+      await confirmTwoFactorChange(nextEnabled, otpString);
+      await set2FAEnabled(nextEnabled);
 
-      if (otpString.length !== OTP_LENGTH) {
-        Toast.show({
-          type: "error",
-          text1: "Invalid Code",
-          text2: "Please enter the full verification code.",
-        });
-        return;
-      }
-      console.log("hehrh");
-      if(!is2FAEnabledStored){ 
-        const verifyRes = await apiFetch("/user/confirm-2fa", {
-            method: "POST",
-            body: JSON.stringify({ otp: otpString }),
-          });
-    
-          const verifyData = await verifyRes.json();
-    
-          if (verifyRes.status!== 200 && verifyRes.status !== 201) {
-            Toast.show({
-              type: "error",
-              text1: "Verification Failed",
-              text2: verifyData.error || "The code you entered is incorrect.",
-            });
-        
-          }
-          Toast.show({
-                      type: "success",
-                      text1: "2FA Enabled",
-                      visibilityTime: 4000,
-                      autoHide: true,
-                    });
-                   
-                    await set2FAEnabled(true);
-      }else{
-        const verifyRes = await apiFetch("/user/confirm-disable-2fa", {
-            method: "POST",
-            body: JSON.stringify({ otp: otpString }),
-          });
-    
-          const verifyData = await verifyRes.json();
-    
-          if (verifyRes.status!== 200 && verifyRes.status !== 201) {
-            Toast.show({
-              type: "error",
-              text1: "Verification Failed",
-              text2: verifyData.error || "The code you entered is incorrect.",
-            });
-          }
-          Toast.show({
-                      type: "success",
-                      text1: "2FA Disabled",
-                      visibilityTime: 4000,
-                      autoHide: true,
-                    });
-                    await set2FAEnabled(true);
-      }
-    router.replace("/profile");
+      Alert.alert(screenCopy.successTitle, screenCopy.successMessage, [
+        {
+          text: "Done",
+          onPress: () => {
+            router.replace("/(profile)/securityAndPassword");
+          },
+        },
+      ]);
     } catch (error) {
-      console.error(error);
-      Toast.show({
-        type: "error",
-        text1: "Error",
-        text2: "An unexpected error occurred. Please try again.",
-      });
+      const message =
+        error instanceof Error
+          ? error.message
+          : "The verification code could not be confirmed.";
+
+      Alert.alert("Verification Failed", message);
     } finally {
       setLoading(false);
     }
-  };
+  }, [nextEnabled, otp, router, screenCopy, set2FAEnabled]);
 
-  const isComplete = otp.every((d) => d !== "");
-  const canResend = true;
+  const handleResend = useCallback(async () => {
+    try {
+      setIsResending(true);
+      await startTwoFactorChange(nextEnabled);
+      setOtp(Array(OTP_LENGTH).fill(""));
+      setSeconds(OTP_SECONDS);
+      inputs.current[0]?.focus();
+      Alert.alert("Code Sent", `A new verification code was sent to ${contactMethod}.`);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Unable to send a new verification code.";
+
+      Alert.alert("Resend Failed", message);
+    } finally {
+      setIsResending(false);
+    }
+  }, [contactMethod, nextEnabled]);
+
+  const isComplete = otp.every((digit) => digit !== "");
+  const canSubmit = isComplete && !loading;
+  const canResend = seconds === 0 && !isResending && !loading;
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-        <View className="px-md py-sm">
-  <TouchableOpacity 
-    onPress={() => router.replace("/profile")}
-    className="w-10 h-10 items-center justify-center rounded-full bg-white shadow-sm"
-  >
-    <Ionicons name="arrow-back" size={24} color="#1568C4" />
-  </TouchableOpacity>
-</View>
+      <View className="px-md py-sm">
+        <TouchableOpacity
+          onPress={() => router.replace("/(profile)/securityAndPassword")}
+          className="w-11 h-11 items-center justify-center rounded-full bg-white border border-borderDefault shadow-sm"
+        >
+          <ChevronLeft size={24} color="#1568C4" strokeWidth={2} />
+        </TouchableOpacity>
+      </View>
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
         <View className="flex-1 px-md justify-center gap-xl">
-          <View className="gap-sm">
-            <Text className="text-primary font-bold text-3xl">
-              Verify Your Email
-            </Text>
-            <Text className="text-secondary text-base leading-6">
-              A message has been sent to{" "}
-              <Text className="text-primaryBrand font-semibold">
-                {contactMethod}
+          <View className="items-center gap-md">
+            <View className="w-24 h-24 rounded-[30px] bg-primaryBrand items-center justify-center shadow-card rotate-3">
+              <View className="-rotate-3">
+                <ShieldCheck size={42} color="#FFFFFF" strokeWidth={1.6} />
+              </View>
+            </View>
+            <View className="items-center gap-xs">
+              <Text className="text-primary font-black text-3xl">
+                {screenCopy.title}
               </Text>
-            </Text>
+              <Text className="text-secondary text-base leading-6 text-center max-w-[320px]">
+                {screenCopy.subtitle}{" "}
+                <Text className="text-primaryBrand font-black">
+                  {contactMethod}
+                </Text>
+              </Text>
+            </View>
           </View>
 
           <View className="gap-lg">
             <View className="flex-row justify-between gap-sm">
               {Array(OTP_LENGTH)
                 .fill(0)
-                .map((_, i) => (
+                .map((_, index) => (
                   <TextInput
-                    key={i}
-                    ref={(ref) => (inputs.current[i] = ref)}
-                    value={otp[i]}
-                    onChangeText={(text) => handleChange(text, i)}
-                    onKeyPress={(e) => handleKeyPress(e, i)}
-                    onFocus={() => setFocusedIndex(i)}
+                    key={index}
+                    ref={(ref) => {
+                      inputs.current[index] = ref;
+                    }}
+                    value={otp[index]}
+                    onChangeText={(text) => handleChange(text, index)}
+                    onKeyPress={(event) => handleKeyPress(event, index)}
+                    onFocus={() => setFocusedIndex(index)}
                     onBlur={() => setFocusedIndex(null)}
                     keyboardType="number-pad"
                     maxLength={1}
                     selectTextOnFocus
                     placeholder="0"
                     placeholderTextColor="#C9D4E8"
-                    className="text-primary font-bold text-2xl text-center bg-surface rounded-lg"
+                    className="flex-1 h-16 rounded-xl text-primary font-black text-2xl text-center bg-white border"
                     style={{
-                      flex: 1,
-                      height: 64,
-                      borderWidth: focusedIndex === i || otp[i] ? 1.5 : 1,
                       borderColor:
-                        focusedIndex === i
+                        focusedIndex === index || otp[index]
                           ? "#1568C4"
-                          : otp[i]
-                            ? "#1568C4"
-                            : "#E3E8F4",
-                      shadowColor:
-                        focusedIndex === i ? "#1568C4" : "transparent",
-                      shadowOffset: { width: 0, height: 2 },
-                      shadowOpacity: 0.12,
-                      shadowRadius: 6,
-                      elevation: focusedIndex === i ? 2 : 0,
+                          : "#E3E8F4",
                     }}
                   />
                 ))}
@@ -214,47 +253,72 @@ export default function OTPScreen() {
 
             <View className="flex-row items-center justify-between px-xs">
               <View className="flex-row items-center gap-xs">
-                <Ionicons name="time-outline" size={18} color="#7B8BAA" />
-                <Text className="text-secondary text-sm font-medium">
+                <Clock3 size={18} color="#7B8BAA" strokeWidth={2} />
+                <Text className="text-secondary text-sm font-bold">
                   {formatTime(seconds)}
                 </Text>
               </View>
+
+              <TouchableOpacity
+                activeOpacity={0.75}
+                onPress={handleResend}
+                disabled={!canResend}
+                className="flex-row items-center gap-xs px-sm py-xs rounded-full"
+                style={{
+                  backgroundColor: canResend
+                    ? "rgba(21, 104, 196, 0.1)"
+                    : "#EEF2FA",
+                }}
+              >
+                {isResending ? (
+                  <ActivityIndicator
+                    key="resending"
+                    size="small"
+                    color="#1568C4"
+                  />
+                ) : (
+                  <RotateCcw
+                    key="resend-icon"
+                    size={15}
+                    color={canResend ? "#1568C4" : "#7B8BAA"}
+                    strokeWidth={2.3}
+                  />
+                )}
+                <Text
+                  className="text-xs font-black uppercase tracking-widest"
+                  style={{ color: canResend ? "#1568C4" : "#7B8BAA" }}
+                >
+                  Resend
+                </Text>
+              </TouchableOpacity>
             </View>
 
             <TouchableOpacity
               onPress={handleConfirm}
-              activeOpacity={isComplete ? 0.9 : 1}
-              disabled={!isComplete}
-              className="rounded-lg py-md items-center justify-center flex-row gap-sm"
+              activeOpacity={canSubmit ? 0.9 : 1}
+              disabled={!canSubmit}
+              className="rounded-[20px] py-lg items-center justify-center flex-row gap-sm shadow-card"
               style={{
-                backgroundColor: isComplete ? "#1568C4" : "#EEF2FA",
-                shadowColor: isComplete ? "#1568C4" : "transparent",
-                shadowOffset: { width: 0, height: 4 },
-                shadowOpacity: 0.2,
-                shadowRadius: 12,
-                elevation: isComplete ? 4 : 0,
+                backgroundColor: canSubmit ? "#1568C4" : "#EEF2FA",
               }}
             >
-              <Text
-                className="font-bold text-base"
-                style={{ color: isComplete ? "#ffffff" : "#7B8BAA" }}
-              >
-                Confirm Selection
-              </Text>
-              <Ionicons
-                name="arrow-forward"
-                size={18}
-                color={isComplete ? "#ffffff" : "#7B8BAA"}
-              />
-            </TouchableOpacity>
-          </View>
-
-          <View className="flex-row justify-center items-center flex-wrap gap-xs">
-            <Text className="text-secondary text-sm">Having trouble?</Text>
-            <TouchableOpacity activeOpacity={0.7}>
-              <Text className="text-primaryBrand font-bold text-sm">
-                Contact Orion Concierge
-              </Text>
+              {loading ? (
+                <ActivityIndicator key="loading" size="small" color="#FFFFFF" />
+              ) : (
+                <React.Fragment key="submit-content">
+                  <Text
+                    className="font-black text-base uppercase tracking-widest"
+                    style={{ color: canSubmit ? "#FFFFFF" : "#7B8BAA" }}
+                  >
+                    {screenCopy.submitLabel}
+                  </Text>
+                  <ArrowRight
+                    size={18}
+                    color={canSubmit ? "#FFFFFF" : "#7B8BAA"}
+                    strokeWidth={2.4}
+                  />
+                </React.Fragment>
+              )}
             </TouchableOpacity>
           </View>
         </View>

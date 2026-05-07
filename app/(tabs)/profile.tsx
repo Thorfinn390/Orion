@@ -124,6 +124,16 @@ export default function ProfileScreen() {
     [],
   );
 
+  const goToHelpCenter = useCallback(
+    () => router.push("/(profile)/helpCenter"),
+    [],
+  );
+
+  const goToTerms = useCallback(
+    () => router.push("/(profile)/termsOfService"),
+    [],
+  );
+
   return (
     <SafeAreaView className="flex-1 bg-surface">
       <ScrollView
@@ -199,12 +209,12 @@ export default function ProfileScreen() {
           <SettingItem
             icon={HelpCircle}
             label="Help Center"
-            onPress={() => {}}
+            onPress={goToHelpCenter}
           />
           <SettingItem
             icon={FileText}
             label="Terms of Service"
-            onPress={() => {}}
+            onPress={goToTerms}
             isLast={true}
           />
         </View>
@@ -229,7 +239,7 @@ export default function ProfileScreen() {
         </TouchableOpacity>
 
         <Text className="text-center text-meta text-[10px] mt-xl font-bold uppercase tracking-widest">
-          Version 1.0.24 — Orion
+          Version 1.0.24 - Orion
         </Text>
       </ScrollView>
     </SafeAreaView>
