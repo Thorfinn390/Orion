@@ -319,7 +319,10 @@ export default function PlanMyJourney() {
 
             <TouchableOpacity
               activeOpacity={0.85}
-              className="bg-primaryBrand h-14 rounded-xl items-center justify-center"
+              disabled={!startingPoint}
+              className={`h-14 rounded-xl items-center justify-center ${
+                startingPoint ? "bg-primaryBrand" : "bg-gray-300"
+              }`}
             >
               <Text className="text-white font-black uppercase text-xs">
                 Generate Guide
