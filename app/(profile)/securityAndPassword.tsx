@@ -197,7 +197,7 @@ const logout=async () => {
           icon={Lock}
           title="Password"
           description="Update your secret key regularly to keep your account safe."
-          onPress={() => console.log("Change Password")}
+          onPress={() => router.push("/(securityandpassword)/change-password" as any)}
         />
 
         <SecurityCard

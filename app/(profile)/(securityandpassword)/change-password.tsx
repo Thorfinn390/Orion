@@ -1,5 +1,5 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import { changeAccountPassword } from "@/utils/securityApi";
+import { apiFetch } from "@/utils/apiFetch"; // <-- ADDED IMPORT
 import { useRouter } from "expo-router";
 import {
   ChevronLeft,
@@ -97,7 +97,7 @@ export default function ChangePasswordScreen() {
     newPassword: false,
     confirmPassword: false,
   });
-  const [loading, setLoading] = useState(false);
+  const[loading, setLoading] = useState(false);
 
   const passwordStrength = useMemo(() => {
     const value = passwords.newPassword;
@@ -121,11 +121,11 @@ export default function ChangePasswordScreen() {
 
   const updatePasswordValue = useCallback((key: PasswordKey, value: string) => {
     setPasswords((current) => ({ ...current, [key]: value }));
-  }, []);
+  },[]);
 
   const toggleVisible = useCallback((key: PasswordKey) => {
     setVisibleFields((current) => ({ ...current, [key]: !current[key] }));
-  }, []);
+  },[]);
 
   const validatePasswordForm = useCallback(() => {
     if (!passwords.currentPassword || !passwords.newPassword || !passwords.confirmPassword) {
@@ -160,6 +160,7 @@ export default function ChangePasswordScreen() {
     return true;
   }, [passwords]);
 
+  // ▼ ▼ ▼ UPDATED FUNCTION ▼ ▼ ▼
   const handleChangePassword = useCallback(async () => {
     if (loading || !validatePasswordForm()) {
       return;
@@ -167,18 +168,33 @@ export default function ChangePasswordScreen() {
 
     try {
       setLoading(true);
-      const payload = await changeAccountPassword(passwords);
+      
+      const response = await apiFetch("/user/change-password", {
+        method: "PATCH", // Note: Using PATCH because your Express route is userRouter.patch("/change-password")
+        body: JSON.stringify({
+          currentPassword: passwords.currentPassword,
+          newPassword: passwords.newPassword,
+          confirmPassword: passwords.confirmPassword,
+        }),
+      });
+
+      const payload = await response.json().catch(() => ({}));
+
+      // Handle backend error responses (400, 401, etc.)
+      if (!response.ok || payload.status === false) {
+        throw new Error(payload.message || "Failed to update password.");
+      }
 
       Alert.alert(
         "Password Updated",
-        payload.message || "Your password has been updated. Please sign in again.",
-        [
+        payload.message || "Your password has been updated. Please sign in again.",[
           {
             text: "Sign In",
             onPress: () => {
               void clearAuth();
-              router.replace("/(auth)/login");
+              router.back(); // Navigate back to the previous screen (which should be the login screen);
             },
+            
           },
         ],
       );
@@ -190,7 +206,8 @@ export default function ChangePasswordScreen() {
     } finally {
       setLoading(false);
     }
-  }, [clearAuth, loading, passwords, router, validatePasswordForm]);
+  },[clearAuth, loading, passwords, router, validatePasswordForm]);
+  // ▲ ▲ ▲ END UPDATED FUNCTION ▲ ▲ ▲
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
