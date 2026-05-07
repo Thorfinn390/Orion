@@ -91,7 +91,6 @@ export default function ProfileScreen() {
           autoHide: true,
           visibilityTime: 2000,
         });
-        // replace ensures the profile route is swapped for login in the current stack
         router.replace("/(auth)/login");
       } else {
         const result = await response.json();

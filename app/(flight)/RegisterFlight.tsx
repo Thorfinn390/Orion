@@ -46,20 +46,6 @@ interface FlightData {
   };
 }
 
-const PASSCODE_PATTERN = /^[A-Z]{6}\d{3}$/;
-const FLIGHT_NUMBER_PATTERN = /^[A-Z0-9]+$/;
-
-const formatFlightNumberInput = (value: string) =>
-  value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-
-const formatPasscodeInput = (value: string) => {
-  const normalized = value.toUpperCase().replace(/[^A-Z0-9]/g, "");
-  const letters = normalized.replace(/[^A-Z]/g, "").slice(0, 6);
-  const numbers = normalized.replace(/\D/g, "").slice(0, 3);
-
-  return `${letters}${numbers}`;
-};
-
 const RegisterFlight = () => {
   const queryClient = useQueryClient();
   const [flightNumber, setFlightNumber] = useState("");
@@ -74,27 +60,11 @@ const RegisterFlight = () => {
   );
 
   const handleRegistration = async () => {
-    const normalizedFlightNumber = formatFlightNumberInput(flightNumber);
-    const normalizedPasscode = formatPasscodeInput(passcode);
-
-    if (!FLIGHT_NUMBER_PATTERN.test(normalizedFlightNumber)) {
+    if (!flightNumber.trim() || !passcode.trim()) {
       Toast.show({
         type: "error",
-        text1: "Invalid flight number",
-        text2: "Use the airline code and number, e.g. ME201.",
-        autoHide: true,
-        visibilityTime: 3000,
-      });
-      return;
-    }
-
-    if (!PASSCODE_PATTERN.test(normalizedPasscode)) {
-      Toast.show({
-        type: "error",
-        text1: "Invalid passcode",
-        text2: "Use six letters followed by three numbers, e.g. ABCDEF123.",
-        autoHide: true,
-        visibilityTime: 3000,
+        text1: "Required Fields",
+        text2: "Please enter both flight number and passcode.",
       });
       return;
     }
@@ -102,13 +72,12 @@ const RegisterFlight = () => {
     try {
       setLoading(true);
       const flightRegObj = {
-        flight_number: normalizedFlightNumber,
-        passcode: normalizedPasscode,
+        flight_number: flightNumber.toUpperCase().trim(),
+        passcode: passcode.toUpperCase().trim(),
       };
 
-      const { raw, ticket } = await TicketSimulationService.registerFlight(
-        flightRegObj,
-      );
+      const { raw, ticket } =
+        await TicketSimulationService.registerFlight(flightRegObj);
 
       setTicketData(raw as FlightData);
       registerTicket(ticket);
@@ -123,8 +92,6 @@ const RegisterFlight = () => {
         type: "error",
         text1: "Failed to Register",
         text2: e instanceof Error ? e.message : "Please try again.",
-        autoHide: true,
-        visibilityTime: 3000,
       });
     } finally {
       setLoading(false);
@@ -137,7 +104,6 @@ const RegisterFlight = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
-        {/* --- INTEGRATED DARK HEADER --- */}
         <View className="bg-navtab px-xl pt-md pb-xl rounded-b-[40px] shadow-lg">
           <View className="flex-row items-center justify-between mb-lg">
             <TouchableOpacity
@@ -169,7 +135,6 @@ const RegisterFlight = () => {
           keyboardShouldPersistTaps="handled"
           className="px-xl -mt-8"
         >
-          {/* --- FORM CARD --- */}
           <View className="bg-white p-lg rounded-[32px] shadow-card border border-borderDefault">
             <View className="flex-row items-center mb-lg">
               <View className="w-12 h-12 bg-primaryBrand rounded-2xl items-center justify-center shadow-md rotate-3">
@@ -190,7 +155,6 @@ const RegisterFlight = () => {
               </View>
             </View>
 
-            {/* Flight Number Input */}
             <View className="mb-lg">
               <Text className="text-navtab text-xs font-black uppercase tracking-widest mb-sm ml-xs">
                 Flight Number
@@ -201,9 +165,7 @@ const RegisterFlight = () => {
                   placeholder="e.g. ME201"
                   placeholderTextColor="#7B8BAA"
                   value={flightNumber}
-                  onChangeText={(value) =>
-                    setFlightNumber(formatFlightNumberInput(value))
-                  }
+                  onChangeText={setFlightNumber}
                   autoCapitalize="characters"
                   autoCorrect={false}
                   className="flex-1 text-navtab font-bold ml-sm text-base"
@@ -211,7 +173,6 @@ const RegisterFlight = () => {
               </View>
             </View>
 
-            {/* Passcode Input */}
             <View className="mb-sm">
               <Text className="text-navtab text-xs font-black uppercase tracking-widest mb-sm ml-xs">
                 Access Passcode
@@ -226,20 +187,16 @@ const RegisterFlight = () => {
                   placeholder="ABCDEF123"
                   placeholderTextColor="#7B8BAA"
                   value={passcode}
-                  onChangeText={(value) =>
-                    setPasscode(formatPasscodeInput(value))
-                  }
+                  onChangeText={setPasscode}
                   secureTextEntry
                   autoCapitalize="characters"
                   autoCorrect={false}
-                  maxLength={9}
                   className="flex-1 text-navtab font-bold ml-sm text-base"
                 />
               </View>
             </View>
           </View>
 
-          {/* --- SUBMIT ACTION --- */}
           <View className="mt-xl">
             <TouchableOpacity
               onPress={handleRegistration}
@@ -255,28 +212,28 @@ const RegisterFlight = () => {
               )}
             </TouchableOpacity>
 
-          <View className="items-center mt-lg">
-            <Text className="text-meta text-[10px] font-bold uppercase tracking-widest">
-              Start Your Journey Here!
-            </Text>
-          </View>
-
-          {ticketData ? (
-            <TouchableOpacity
-              onPress={() =>
-                TicketSimulationService.startJourney(
-                  toRegisteredTicket(ticketData),
-                )
-              }
-              activeOpacity={0.85}
-              className="mt-md bg-primaryBrand h-14 rounded-[22px] flex-row items-center justify-center shadow-lg"
-            >
-              <Text className="text-white text-sm font-black uppercase tracking-widest">
-                Start Journey
+            <View className="items-center mt-lg">
+              <Text className="text-meta text-[10px] font-bold uppercase tracking-widest">
+                Start Your Journey Here!
               </Text>
-            </TouchableOpacity>
-          ) : null}
-        </View>
+            </View>
+
+            {ticketData ? (
+              <TouchableOpacity
+                onPress={() =>
+                  TicketSimulationService.startJourney(
+                    toRegisteredTicket(ticketData),
+                  )
+                }
+                activeOpacity={0.85}
+                className="mt-md bg-primaryBrand h-14 rounded-[22px] flex-row items-center justify-center shadow-lg"
+              >
+                <Text className="text-white text-sm font-black uppercase tracking-widest">
+                  Start Journey
+                </Text>
+              </TouchableOpacity>
+            ) : null}
+          </View>
         </ScrollView>
 
         {showTicket && (

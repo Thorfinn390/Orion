@@ -6,31 +6,31 @@
           "facility": "Terminal 1 (Main Hall)",
           "step": 1,
           "description": "The primary entry point for all departing passengers, housing main transport links and entrance portals.",
-          "coordinates": { "lat": 25.2532, "lng": 55.3657 }
+          "coordinates": { "lat": 34.438888, "lng": 35.831124 }
         },
         {
           "facility": "Main Check-in & First Class Counters",
           "step": 2,
           "description": "Dedicated zones for document verification and boarding pass issuance, featuring specialized lanes for Platinum and Staff members.",
-          "coordinates": { "lat": 25.2535, "lng": 55.366 }
+          "coordinates": { "lat": 34.438821, "lng": 35.831072 }
         },
         {
           "facility": "Self-Service Baggage Drop",
           "step": 3,
           "description": "Automated kiosks for tagging and injecting luggage into the sorting system, including a dedicated belt for oversized items.",
-          "coordinates": { "lat": 25.2538, "lng": 55.3663 }
+          "coordinates": { "lat": 34.438821, "lng": 35.831072 }
         },
         {
           "facility": "Excess Baggage Cashier",
           "step": 4,
           "description": "Payment counter for luggage exceeding standard weight or piece limits.",
-          "coordinates": { "lat": 25.254, "lng": 55.3665 }
+          "coordinates": { "lat": 34.438821, "lng": 35.831072 }
         },
         {
           "facility": "Customer Service & Help Desk",
           "step": 5,
           "description": "Centralized information hub for passenger inquiries, wayfinding, and airport assistance.",
-          "coordinates": { "lat": 25.2542, "lng": 55.3668 }
+          "coordinates": { "lat": 34.438892, "lng": 35.830954 }
         }
       ],
       "amenities": [
@@ -38,13 +38,13 @@
           "facility": "Executive Valet Parking",
           "step": null,
           "description": "Premium vehicle drop-off service located directly at the Terminal 1 Departure curb.",
-          "coordinates": { "lat": 25.2528, "lng": 55.3655 }
+          "coordinates": { "lat": 34.43913, "lng": 35.83116 }
         },
         {
           "facility": "Global Car Rental Lounge",
           "step": null,
           "description": "Hub for international car rental brands including Hertz, Avis, and Sixt.",
-          "coordinates": { "lat": 25.2525, "lng": 55.365 }
+          "coordinates": { "lat": 34.43878, "lng": 35.830895 }
         },
         {
           "facility": "Police Reception Office",

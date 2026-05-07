@@ -24,14 +24,32 @@ export default function FlightComponent({ data }: FlightProps) {
   const queryClient = useQueryClient();
   const [modalVisible, setModalVisible] = useState(false);
   const [password, setPassword] = useState("");
+
   const registerTicket = useJourneySimulationStore(
     (state) => state.registerTicket,
   );
-  const startTicketSimulation = useJourneySimulationStore(
-    (state) => state.startTicketSimulation,
-  );
 
-  const mutation = useMutation({
+  const handleGenerateGuide = () => {
+    const registeredTicket = {
+      userFlightId: data.userFlightId,
+      flightId: data.id,
+      flightNumber: data.flight_number,
+      gate: data.gate,
+      terminal: data.terminal,
+      checklistItems: data.checklistItems,
+    };
+
+    registerTicket(registeredTicket);
+
+    router.push({
+      pathname: `/(journey)/FlightGuide/[id]`,
+      params: {
+        id: data.userFlightId,
+      },
+    });
+  };
+
+  const deleteMutation = useMutation({
     mutationFn: async (password: string) => {
       const response = await apiFetch(`/flight/cancel/${data.userFlightId}`, {
         method: "DELETE",
@@ -57,31 +75,8 @@ export default function FlightComponent({ data }: FlightProps) {
     },
   });
 
-  const handleSimulation = () => {
-    const registeredTicket = {
-      userFlightId: data.userFlightId,
-      flightId: data.id,
-      flightNumber: data.flight_number,
-      gate: data.gate,
-      terminal: data.terminal,
-      checklistItems: data.checklistItems,
-    };
-
-    registerTicket(registeredTicket);
-    startTicketSimulation(registeredTicket);
-    router.push({
-      pathname: "/(tabs)/map",
-      params: {
-        mode: "journey",
-        userFlightId: data.userFlightId,
-        flightNumber: data.flight_number,
-      },
-    });
-  };
-
   return (
     <View className="bg-white p-lg rounded-[32px] border border-borderDefault mb-lg shadow-sm">
-      {/* Flight Info Header */}
       <View className="flex-row justify-between items-start mb-md">
         <View>
           <Text className="text-meta text-[10px] font-black uppercase tracking-widest">
@@ -98,7 +93,6 @@ export default function FlightComponent({ data }: FlightProps) {
         </View>
       </View>
 
-      {/* Route Display */}
       <View className="flex-row justify-between items-center py-lg border-y border-borderDefault/30 mb-md">
         <View className="flex-1">
           <Text className="text-3xl font-black text-primary">
@@ -119,15 +113,14 @@ export default function FlightComponent({ data }: FlightProps) {
         </View>
       </View>
 
-      {/* Actions */}
       <View className="flex-row gap-md pt-sm">
         <TouchableOpacity
-          onPress={handleSimulation}
-          className="flex-1 flex-row items-center justify-center py-md bg-primaryBrand rounded-2xl"
+          onPress={handleGenerateGuide}
+          className="flex-1 flex-row items-center justify-center py-md bg-navtab rounded-2xl"
         >
-          <Ionicons name="navigate" size={16} color="white" />
+          <Ionicons name="book-outline" size={16} color="white" />
           <Text className="text-white font-black text-xs uppercase tracking-widest ml-xs">
-            Simulate
+            {data._count.guides === 0 ? "Generate Guide" : "View Guide"}
           </Text>
         </TouchableOpacity>
 
@@ -142,7 +135,6 @@ export default function FlightComponent({ data }: FlightProps) {
         </TouchableOpacity>
       </View>
 
-      {/* Cancellation Modal */}
       <Modal
         visible={modalVisible}
         transparent
@@ -150,7 +142,6 @@ export default function FlightComponent({ data }: FlightProps) {
         onRequestClose={() => setModalVisible(false)}
       >
         <View className="flex-1 justify-center items-center px-xl">
-          {/* Blur Background */}
           <BlurView
             intensity={20}
             tint="dark"
@@ -158,7 +149,6 @@ export default function FlightComponent({ data }: FlightProps) {
             experimentalBlurMethod="dimezisBlurView"
           />
 
-          {/* Modal Content */}
           <View className="bg-white w-full p-xl rounded-[40px] shadow-2xl items-center">
             <View className="w-16 h-16 bg-red-50 rounded-full items-center justify-center mb-lg">
               <Ionicons name="alert-circle" size={32} color="#C84B4B" />
@@ -186,7 +176,7 @@ export default function FlightComponent({ data }: FlightProps) {
               />
             </View>
 
-            <View className="flex-row gap-md w-full">
+            <div className="flex-row gap-md w-full">
               <TouchableOpacity
                 onPress={() => {
                   setModalVisible(false);
@@ -200,13 +190,15 @@ export default function FlightComponent({ data }: FlightProps) {
               </TouchableOpacity>
 
               <TouchableOpacity
-                onPress={() => mutation.mutate(password)}
-                disabled={mutation.isPending || !password}
+                onPress={() => deleteMutation.mutate(password)}
+                disabled={deleteMutation.isPending || !password}
                 className={`flex-2 py-lg rounded-2xl items-center shadow-lg ${
-                  mutation.isPending || !password ? "bg-red-300" : "bg-red-600"
+                  deleteMutation.isPending || !password
+                    ? "bg-red-300"
+                    : "bg-red-600"
                 }`}
               >
-                {mutation.isPending ? (
+                {deleteMutation.isPending ? (
                   <ActivityIndicator color="white" />
                 ) : (
                   <Text className="text-white px-5 font-black uppercase tracking-widest text-xs">
@@ -214,7 +206,7 @@ export default function FlightComponent({ data }: FlightProps) {
                   </Text>
                 )}
               </TouchableOpacity>
-            </View>
+            </div>
           </View>
         </View>
       </Modal>

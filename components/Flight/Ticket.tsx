@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import React from "react";
-import { Dimensions, Text, TouchableOpacity, View } from "react-native";
+import { Dimensions, Text, View } from "react-native";
 
 const { width } = Dimensions.get("window");
 
@@ -30,17 +30,6 @@ const Ticket = ({ data, onClose }: TicketProps) => {
 
   return (
     <View className="my-4 self-center" style={{ width: width * 0.9 }}>
-      {/* Close Button Layer */}
-      <View className="absolute right-2 -top-2 z-50">
-        <TouchableOpacity
-          onPress={onClose}
-          activeOpacity={0.8}
-          className="bg-textPrimary w-8 h-8 rounded-full items-center justify-center shadow-lg border-2 border-white"
-        >
-          <Ionicons name="close" size={18} color="white" />
-        </TouchableOpacity>
-      </View>
-
       {/* Top Section */}
       <View className="bg-white rounded-t-3xl p-6 border-x border-t border-black/5">
         <View className="flex-row justify-between items-center mb-6 pr-6">

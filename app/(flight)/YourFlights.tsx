@@ -17,8 +17,11 @@ import { SafeAreaView } from "react-native-safe-area-context";
 export default function YourFlights() {
   const fetchFlights = async () => {
     const response = await apiFetch("/flight", { method: "GET" });
+
     if (!response.ok) throw new Error("Network response was not ok");
     const result = await response.json();
+
+    console.log(result.data);
     return result.data || [];
   };
 
