@@ -1,15 +1,7 @@
 import Ticket from "@/components/Flight/Ticket";
 import { useAuthStore } from "@/stores/useAuthStore";
-import {
-  RegisteredTicket,
-  useJourneySimulationStore,
-} from "@/stores/useJourneySimulationStore";
-import {
-  TicketSimulationService,
-  toRegisteredTicket,
-} from "@/utils/TicketSimulationService";
+import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
-import { useQueryClient } from "@tanstack/react-query";
 import { router } from "expo-router";
 import React, { useState } from "react";
 import {
@@ -26,9 +18,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
 
 interface FlightData {
-  id: string;
-  flightId?: string;
-  checklistItems?: RegisteredTicket["checklistItems"];
   flight: {
     flight_number: string;
     terminal: string | null;
@@ -47,7 +36,6 @@ interface FlightData {
 }
 
 const RegisterFlight = () => {
-  const queryClient = useQueryClient();
   const [flightNumber, setFlightNumber] = useState("");
   const [passcode, setPasscode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -55,44 +43,44 @@ const RegisterFlight = () => {
   const [ticketData, setTicketData] = useState<FlightData | null>(null);
 
   const fullName = useAuthStore((state) => state.fullName);
-  const registerTicket = useJourneySimulationStore(
-    (state) => state.registerTicket,
-  );
 
   const handleRegistration = async () => {
-    if (!flightNumber.trim() || !passcode.trim()) {
-      Toast.show({
-        type: "error",
-        text1: "Required Fields",
-        text2: "Please enter both flight number and passcode.",
-      });
-      return;
-    }
-
     try {
       setLoading(true);
       const flightRegObj = {
-        flight_number: flightNumber.toUpperCase().trim(),
-        passcode: passcode.toUpperCase().trim(),
+        flight_number: flightNumber,
+        passcode,
       };
 
-      const { raw, ticket } =
-        await TicketSimulationService.registerFlight(flightRegObj);
-
-      setTicketData(raw as FlightData);
-      registerTicket(ticket);
-      queryClient.invalidateQueries({ queryKey: ["homeRegisteredFlights"] });
-      queryClient.invalidateQueries({ queryKey: ["userFlights"] });
-      queryClient.invalidateQueries({ queryKey: ["guideRegisteredFlights"] });
-      setShowTicket(true);
-      setFlightNumber("");
-      setPasscode("");
-    } catch (e) {
-      Toast.show({
-        type: "error",
-        text1: "Failed to Register",
-        text2: e instanceof Error ? e.message : "Please try again.",
+      const response = await apiFetch("/flight/associate", {
+        method: "POST",
+        body: JSON.stringify(flightRegObj),
       });
+
+      if (!response.ok) {
+        const result = await response.json();
+
+        Toast.show({
+          type: "error",
+          text1: "Failed to Register",
+          text2: result?.message,
+          autoHide: true,
+          visibilityTime: 3000,
+        });
+
+        return;
+      }
+
+      const result = await response.json();
+
+      if (result?.data) {
+        setTicketData(result.data);
+        setShowTicket(true);
+        setFlightNumber("");
+        setPasscode("");
+      }
+    } catch (e) {
+      console.log(e);
     } finally {
       setLoading(false);
     }
@@ -104,6 +92,7 @@ const RegisterFlight = () => {
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
       >
+        {/* --- INTEGRATED DARK HEADER --- */}
         <View className="bg-navtab px-xl pt-md pb-xl rounded-b-[40px] shadow-lg">
           <View className="flex-row items-center justify-between mb-lg">
             <TouchableOpacity
@@ -135,6 +124,7 @@ const RegisterFlight = () => {
           keyboardShouldPersistTaps="handled"
           className="px-xl -mt-8"
         >
+          {/* --- FORM CARD --- */}
           <View className="bg-white p-lg rounded-[32px] shadow-card border border-borderDefault">
             <View className="flex-row items-center mb-lg">
               <View className="w-12 h-12 bg-primaryBrand rounded-2xl items-center justify-center shadow-md rotate-3">
@@ -155,6 +145,7 @@ const RegisterFlight = () => {
               </View>
             </View>
 
+            {/* Flight Number Input */}
             <View className="mb-lg">
               <Text className="text-navtab text-xs font-black uppercase tracking-widest mb-sm ml-xs">
                 Flight Number
@@ -162,17 +153,17 @@ const RegisterFlight = () => {
               <View className="flex-row items-center bg-inputSurface rounded-2xl px-md border border-borderEmphasis h-14">
                 <Ionicons name="barcode-outline" size={20} color="#1568C4" />
                 <TextInput
-                  placeholder="e.g. ME201"
+                  placeholder="e.g. MEA 204"
                   placeholderTextColor="#7B8BAA"
                   value={flightNumber}
                   onChangeText={setFlightNumber}
                   autoCapitalize="characters"
-                  autoCorrect={false}
                   className="flex-1 text-navtab font-bold ml-sm text-base"
                 />
               </View>
             </View>
 
+            {/* Passcode Input */}
             <View className="mb-sm">
               <Text className="text-navtab text-xs font-black uppercase tracking-widest mb-sm ml-xs">
                 Access Passcode
@@ -184,19 +175,19 @@ const RegisterFlight = () => {
                   color="#1568C4"
                 />
                 <TextInput
-                  placeholder="ABCDEF123"
+                  placeholder="••••••"
                   placeholderTextColor="#7B8BAA"
                   value={passcode}
                   onChangeText={setPasscode}
                   secureTextEntry
-                  autoCapitalize="characters"
-                  autoCorrect={false}
+                  keyboardType="numeric"
                   className="flex-1 text-navtab font-bold ml-sm text-base"
                 />
               </View>
             </View>
           </View>
 
+          {/* --- SUBMIT ACTION --- */}
           <View className="mt-xl">
             <TouchableOpacity
               onPress={handleRegistration}
@@ -207,7 +198,7 @@ const RegisterFlight = () => {
                 <ActivityIndicator size="small" color="white" />
               ) : (
                 <Text className="text-white text-lg font-black uppercase tracking-widest mr-sm">
-                  Register Ticket
+                  Buy Ticket
                 </Text>
               )}
             </TouchableOpacity>
@@ -217,22 +208,6 @@ const RegisterFlight = () => {
                 Start Your Journey Here!
               </Text>
             </View>
-
-            {ticketData ? (
-              <TouchableOpacity
-                onPress={() =>
-                  TicketSimulationService.startJourney(
-                    toRegisteredTicket(ticketData),
-                  )
-                }
-                activeOpacity={0.85}
-                className="mt-md bg-primaryBrand h-14 rounded-[22px] flex-row items-center justify-center shadow-lg"
-              >
-                <Text className="text-white text-sm font-black uppercase tracking-widest">
-                  Start Journey
-                </Text>
-              </TouchableOpacity>
-            ) : null}
           </View>
         </ScrollView>
 
@@ -240,6 +215,7 @@ const RegisterFlight = () => {
           <Ticket
             onClose={() => {
               setShowTicket(false);
+              router.replace("/profile");
             }}
             data={ticketData as FlightData}
           />

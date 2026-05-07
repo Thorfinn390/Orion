@@ -10,7 +10,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -29,10 +29,13 @@ export default function OTPScreen() {
   const [loading, setLoading] = useState(false);
   let is2FAEnabledStored = useAuthStore((state) => state.is_2fa_enabled);
   useEffect(() => {
-    const subscription = BackHandler.addEventListener('hardwareBackPress', () => {
-      router.replace("/profile");
-      return true;
-    });
+    const subscription = BackHandler.addEventListener(
+      "hardwareBackPress",
+      () => {
+        router.replace("/profile");
+        return true;
+      },
+    );
     return () => subscription.remove();
   }, []);
 
@@ -69,7 +72,6 @@ export default function OTPScreen() {
 
   const handleConfirm = async () => {
     try {
-     
       setLoading(true);
       const otpString = otp.join("");
 
@@ -82,54 +84,53 @@ export default function OTPScreen() {
         return;
       }
       console.log("hehrh");
-      if(!is2FAEnabledStored){ 
+      if (!is2FAEnabledStored) {
         const verifyRes = await apiFetch("/user/confirm-2fa", {
-            method: "POST",
-            body: JSON.stringify({ otp: otpString }),
-          });
-    
-          const verifyData = await verifyRes.json();
-    
-          if (verifyRes.status!== 200 && verifyRes.status !== 201) {
-            Toast.show({
-              type: "error",
-              text1: "Verification Failed",
-              text2: verifyData.error || "The code you entered is incorrect.",
-            });
-        
-          }
+          method: "POST",
+          body: JSON.stringify({ otp: otpString }),
+        });
+
+        const verifyData = await verifyRes.json();
+
+        if (verifyRes.status !== 200 && verifyRes.status !== 201) {
           Toast.show({
-                      type: "success",
-                      text1: "2FA Enabled",
-                      visibilityTime: 4000,
-                      autoHide: true,
-                    });
-                   
-                    await set2FAEnabled(true);
-      }else{
+            type: "error",
+            text1: "Verification Failed",
+            text2: verifyData.error || "The code you entered is incorrect.",
+          });
+        }
+        Toast.show({
+          type: "success",
+          text1: "2FA Enabled",
+          visibilityTime: 4000,
+          autoHide: true,
+        });
+
+        await set2FAEnabled(true);
+      } else {
         const verifyRes = await apiFetch("/user/confirm-disable-2fa", {
-            method: "POST",
-            body: JSON.stringify({ otp: otpString }),
-          });
-    
-          const verifyData = await verifyRes.json();
-    
-          if (verifyRes.status!== 200 && verifyRes.status !== 201) {
-            Toast.show({
-              type: "error",
-              text1: "Verification Failed",
-              text2: verifyData.error || "The code you entered is incorrect.",
-            });
-          }
+          method: "POST",
+          body: JSON.stringify({ otp: otpString }),
+        });
+
+        const verifyData = await verifyRes.json();
+
+        if (verifyRes.status !== 200 && verifyRes.status !== 201) {
           Toast.show({
-                      type: "success",
-                      text1: "2FA Disabled",
-                      visibilityTime: 4000,
-                      autoHide: true,
-                    });
-                    await set2FAEnabled(true);
+            type: "error",
+            text1: "Verification Failed",
+            text2: verifyData.error || "The code you entered is incorrect.",
+          });
+        }
+        Toast.show({
+          type: "success",
+          text1: "2FA Disabled",
+          visibilityTime: 4000,
+          autoHide: true,
+        });
+        await set2FAEnabled(true);
       }
-    router.replace("/profile");
+      router.replace("/profile");
     } catch (error) {
       console.error(error);
       Toast.show({
@@ -147,14 +148,14 @@ export default function OTPScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
-        <View className="px-md py-sm">
-  <TouchableOpacity 
-    onPress={() => router.replace("/profile")}
-    className="w-10 h-10 items-center justify-center rounded-full bg-white shadow-sm"
-  >
-    <Ionicons name="arrow-back" size={24} color="#1568C4" />
-  </TouchableOpacity>
-</View>
+      <View className="px-md py-sm">
+        <TouchableOpacity
+          onPress={() => router.replace("/profile")}
+          className="w-10 h-10 items-center justify-center rounded-full bg-white shadow-sm"
+        >
+          <Ionicons name="arrow-back" size={24} color="#1568C4" />
+        </TouchableOpacity>
+      </View>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         className="flex-1"
