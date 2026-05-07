@@ -1,22 +1,15 @@
 import { useAuthStore } from "@/stores/useAuthStore";
-import {
-  fetchSecurityStatus,
-  requestAccountDeletion,
-  startTwoFactorChange,
-} from "@/utils/securityApi";
-import { useRouter } from "expo-router";
+import { apiFetch } from "@/utils/apiFetch";
+import { router } from "expo-router";
 import {
   ChevronLeft,
   ChevronRight,
-  KeyRound,
   Lock,
-  RefreshCw,
   Smartphone,
   Trash2,
 } from "lucide-react-native";
-import React, { memo, useCallback, useEffect, useMemo, useState } from "react";
+import React, { useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
   ScrollView,
   Switch,
@@ -25,60 +18,29 @@ import {
   View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
+import Toast from "react-native-toast-message";
 
-type SecurityCardProps = {
-  icon: any;
-  title: string;
-  description: string;
-  onPress?: () => void;
-  children?: React.ReactNode;
-  disabled?: boolean;
-};
-
-const SectionLabel = memo(({ children }: { children: React.ReactNode }) => (
-  <Text className="text-xs font-black text-meta uppercase tracking-widest mb-md ml-1">
-    {children}
-  </Text>
-));
-
-SectionLabel.displayName = "SectionLabel";
-
-const SecurityCard = memo(
-  ({
-    icon: Icon,
-    title,
-    description,
-    onPress,
-    children,
-    disabled = false,
-  }: SecurityCardProps) => (
+const SecurityCard = React.memo(
+  ({ icon: Icon, title, description, onPress, children }: any) => (
     <TouchableOpacity
-      activeOpacity={0.72}
+      activeOpacity={0.7}
       onPress={onPress}
-      disabled={!onPress || disabled}
-      className="bg-white rounded-[24px] p-lg mb-md border border-borderDefault shadow-card"
-      style={{ opacity: disabled ? 0.6 : 1 }}
+      disabled={!onPress}
+      className="bg-white rounded-2xl p-lg mb-md border border-borderDefault shadow-card"
     >
       <View className="flex-row items-center justify-between">
-        <View className="flex-row items-center gap-md flex-1 pr-md">
+        <View className="flex-row items-center gap-md flex-1">
           <View className="w-12 h-12 rounded-xl bg-inputSurface items-center justify-center">
-            <Icon size={23} color="#1568C4" strokeWidth={1.8} />
+            <Icon size={24} color="#1568C4" strokeWidth={1.5} />
           </View>
           <View className="flex-1">
-            <Text className="text-lg font-black text-primary">{title}</Text>
-            <Text className="text-sm text-meta leading-5 mt-xs">
+            <Text className="text-lg font-bold text-primary">{title}</Text>
+            <Text className="text-sm text-meta leading-5 mt-1">
               {description}
             </Text>
           </View>
         </View>
-
-        {children ? (
-          children
-        ) : (
-          <View className="w-9 h-9 rounded-full bg-surface items-center justify-center">
-            <ChevronRight size={18} color="#7B8BAA" />
-          </View>
-        )}
+        {children ? children : <ChevronRight size={20} color="#C9D4E8" />}
       </View>
     </TouchableOpacity>
   ),
@@ -86,300 +48,206 @@ const SecurityCard = memo(
 
 SecurityCard.displayName = "SecurityCard";
 
-const SecurityStatePill = memo(
-  ({ enabled, syncing }: { enabled: boolean; syncing: boolean }) => (
-    <View className="flex-row items-center self-start bg-white border border-borderDefault rounded-full px-md py-sm shadow-sm">
-      {syncing ? (
-        <ActivityIndicator key="syncing" size="small" color="#1568C4" />
-      ) : (
-        <View
-          key="status-dot"
-          className="w-2 h-2 rounded-full"
-          style={{ backgroundColor: enabled ? "#1A7A48" : "#7B8BAA" }}
-        />
-      )}
-      <Text className="text-xs font-black text-primary uppercase tracking-widest ml-sm">
-        2FA {enabled ? "On" : "Off"}
-      </Text>
-    </View>
-  ),
-);
-
-SecurityStatePill.displayName = "SecurityStatePill";
-
 export default function SecurityScreen() {
-  const router = useRouter();
-  const is2FAEnabledStored = useAuthStore((state) => state.is_2fa_enabled);
-  const set2FAEnabledStored = useAuthStore((state) => state.setIs2faEnabled);
+  let is2FAEnabledStored = useAuthStore((state) => state.is_2fa_enabled);
+  const [is2FAEnabled, setIs2FAEnabled] = useState(is2FAEnabledStored);
   const clearAuth = useAuthStore((state) => state.clearAuth);
   const userId = useAuthStore((state) => state.userId);
-  const email = useAuthStore((state) => state.email);
 
-  const [is2FAEnabled, setIs2FAEnabled] = useState(is2FAEnabledStored);
-  const [isSyncingStatus, setIsSyncingStatus] = useState(false);
-  const [isTwoFactorLoading, setIsTwoFactorLoading] = useState(false);
-  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
 
-  useEffect(() => {
-    setIs2FAEnabled(is2FAEnabledStored);
-  }, [is2FAEnabledStored]);
+  const deleteAccRequest= async ()=>{
+    try{
+    const response = await apiFetch("/user/request-account-deletion", {
+            method: "POST",
+          });
 
-  const syncSecurityState = useCallback(async (showLoading = true) => {
-    if (!userId) {
-      if (showLoading) {
-        setIsSyncingStatus(false);
-      }
-      setIs2FAEnabled(is2FAEnabledStored);
-      return;
-    }
+      
+     if (response.status === 200 || response.status === 201) {
+            // Toast.show({
+            //   type: "success",
+            //   text1: "Account queued for qeletion",
+            //   text2: "Check your email for confirmation.",
+            //   autoHide: true,
+            //   visibilityTime: 4000,
+            // });
 
-    try {
-      if (showLoading) {
-        setIsSyncingStatus(true);
-      }
-      const status = await fetchSecurityStatus(userId);
-
-      if (typeof status.is_2fa_enabled === "boolean") {
-        setIs2FAEnabled(status.is_2fa_enabled);
-        await set2FAEnabledStored(status.is_2fa_enabled);
-      } else {
-        setIs2FAEnabled(is2FAEnabledStored);
-      }
-    } catch {
-      setIs2FAEnabled(is2FAEnabledStored);
-    } finally {
-      if (showLoading) {
-        setIsSyncingStatus(false);
-      }
-    }
-  }, [is2FAEnabledStored, set2FAEnabledStored, userId]);
-
-  useEffect(() => {
-    // TODO: Re-enable blocking startup sync when users.routes.js exposes users.controller.getUser.
-    void syncSecurityState(false);
-  }, [syncSecurityState]);
-
-  const twoFactorDescription = useMemo(
-    () =>
-      is2FAEnabled
-        ? "A verification code is required when you sign in."
-        : "Add a verification code before sign-in is completed.",
-    [is2FAEnabled],
-  );
-
-  const handleChangePassword = useCallback(() => {
-    router.push("/(profile)/(securityandpassword)/change-password");
-  }, [router]);
-
-  const handle2FAToggle = useCallback(
-    async (nextEnabled: boolean) => {
-      if (isTwoFactorLoading) {
-        return;
-      }
-
-      try {
-        setIsTwoFactorLoading(true);
-        await startTwoFactorChange(nextEnabled);
-
-        const contactMethod = encodeURIComponent(email || "your email");
-        router.push(
-          `/(profile)/(securityandpassword)/2faconfirm?action=${
-            nextEnabled ? "enable" : "disable"
-          }&contactMethod=${contactMethod}`,
-        );
-      } catch (error) {
-        const message =
-          error instanceof Error
-            ? error.message
-            : "Unable to update two-factor authentication.";
-
-        Alert.alert("2FA Update Failed", message);
-      } finally {
-        setIsTwoFactorLoading(false);
-      }
-    },
-    [email, isTwoFactorLoading, router],
-  );
-
-  const completeAccountDeletion = useCallback(async () => {
-    if (isDeletingAccount) {
-      return;
-    }
-
-    try {
-      setIsDeletingAccount(true);
-      const payload = await requestAccountDeletion();
-
-      Alert.alert(
-        "Deletion Requested",
-        payload.message ||
-          "Your account deletion request was sent successfully. Please check your email for confirmation.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              void clearAuth();
-              router.replace("/(auth)/login");
-            },
-          },
-        ],
-      );
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to request account deletion.";
-
-      Alert.alert("Request Failed", message);
-    } finally {
-      setIsDeletingAccount(false);
-    }
-  }, [clearAuth, isDeletingAccount, router]);
-
-  const handleDeleteAccount = useCallback(() => {
+            logout();
+    
+          } else {
+            Toast.show({
+              type: "error",
+              text1: "request Failed",
+              text2: response.message || "Something went wrong",
+            });
+          }
+        } catch (error) {
+          Toast.show({
+            type: "error",
+            text1: "Network Error",
+            text2: "Could not connect to the server.",
+          });
+        }
+  }
+const logout=async () => {
+  try{
+  console.log("Logging out user with ID:", userId);
+        const response = await apiFetch(`/auth/logout/${userId}`, {
+          method: "GET",
+        });
+  
+        if (response.status === 200) {
+          console.log("h");
+          await clearAuth();
+          Toast.show({
+            type: "success",
+            text1: "Logged out successfully",
+            autoHide: true,
+            visibilityTime: 2000,
+          });
+          router.replace("/(auth)/login");
+        } else {
+          const result = await response.json();
+          Toast.show({ type: "error", text1: result.message });
+        }
+      } catch (e) {
+        console.warn(e);
+        Toast.show({ type: "error", text1: "Error logging you out" });
+      } 
+}
+  const handleDeleteAccount = () => {
     Alert.alert(
-      "Are you sure?",
-      "This is irreversible. Your account, flight history, and preferences will be scheduled for deletion.",
+      "Delete Account",
+      "This action is permanent and cannot be undone. Are you sure?",
       [
         { text: "Cancel", style: "cancel" },
         {
-          text: "Request Deletion",
+          text: "Delete",
           style: "destructive",
-          onPress: () => {
-            void completeAccountDeletion();
-          },
+          onPress: () => {deleteAccRequest();},
         },
       ],
     );
-  }, [completeAccountDeletion]);
+  };
+  const handle2FAToggle =  async (newValue: boolean) => {
+    console.log("Toggling 2FA to:", newValue);
+    try{
+    setIs2FAEnabled(newValue);
+    let verifyRes;
+    if(newValue){
+      console.log("Enabling 2FA");
+      verifyRes = await apiFetch("/user/enable-2fa", {
+        method: "POST",
+      });
+    }else{
+       verifyRes = await apiFetch("/user/disable-2fa", {
+        method: "POST",
+      });
+    }
+    console.log("2FA toggle response:", verifyRes);
+    router.replace("/(securityandpassword)/2faconfirm" as any);
+
+    }catch(error){
+      console.error(error);
+      Toast.show({
+        type: "error",
+        text1: "Error",
+        text2: "An unexpected error occurred. Please try again.",
+      });
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-surface">
+      {/* Custom Header */}
       <View className="px-md py-sm flex-row items-center justify-between">
         <TouchableOpacity
           onPress={() => router.back()}
-          className="w-11 h-11 rounded-full bg-white border border-borderDefault items-center justify-center shadow-sm"
+          className="w-10 h-10 rounded-full bg-white border border-borderDefault items-center justify-center shadow-sm"
         >
           <ChevronLeft size={24} color="#0D1A3A" />
         </TouchableOpacity>
-        <Text className="text-base font-black text-primary">
+        <Text className="text-base font-bold text-primary">
           Security Center
         </Text>
-        <TouchableOpacity
-          onPress={() => void syncSecurityState()}
-          disabled={isSyncingStatus}
-          className="w-11 h-11 rounded-full bg-white border border-borderDefault items-center justify-center shadow-sm"
-        >
-          {isSyncingStatus ? (
-            <ActivityIndicator key="syncing" size="small" color="#1568C4" />
-          ) : (
-            <RefreshCw
-              key="refresh"
-              size={18}
-              color="#1568C4"
-              strokeWidth={2.2}
-            />
-          )}
-        </TouchableOpacity>
+        <View className="w-10" />
       </View>
 
-      <ScrollView className="flex-1" showsVerticalScrollIndicator={false}>
-        <View className="px-md pt-lg pb-2xl">
-          <View className="mb-xl">
-            <View className="w-16 h-16 rounded-[20px] bg-primaryBrand items-center justify-center shadow-card mb-md">
-              <Lock size={28} color="#FFFFFF" strokeWidth={1.7} />
-            </View>
-            <Text className="text-3xl font-black text-primary tracking-tight">
-              Protect your{"\n"}
-              <Text className="text-primaryBrand">digital identity.</Text>
-            </Text>
-            <Text className="text-sm text-meta leading-6 mt-sm max-w-[320px]">
-              Keep your sign-in credentials current and decide how your account
-              should be protected.
-            </Text>
-            <View className="mt-md">
-              <SecurityStatePill
-                enabled={is2FAEnabled}
-                syncing={isSyncingStatus}
-              />
-            </View>
-          </View>
-
-          <SectionLabel>Access Control</SectionLabel>
-
-          <SecurityCard
-            icon={KeyRound}
-            title="Password"
-            description="Update your secret key regularly to keep your account safe."
-            onPress={handleChangePassword}
-          />
-
-          <SecurityCard
-            icon={Smartphone}
-            title="2FA Authentication"
-            description={twoFactorDescription}
-            disabled={isTwoFactorLoading}
-          >
-            <View className="min-w-14 items-end">
-              {isTwoFactorLoading ? (
-                <ActivityIndicator
-                  key="two-factor-loading"
-                  size="small"
-                  color="#1568C4"
-                />
-              ) : (
-                <Switch
-                  key="two-factor-switch"
-                  value={is2FAEnabled}
-                  onValueChange={handle2FAToggle}
-                  disabled={isTwoFactorLoading}
-                  trackColor={{ false: "#E3E8F4", true: "#1568C4" }}
-                  thumbColor="#FFFFFF"
-                />
-              )}
-            </View>
-          </SecurityCard>
-
-          <SectionLabel>Privacy & Data</SectionLabel>
-
-          <View className="mt-sm p-lg rounded-[24px] bg-white border border-statusUL/20 border-dashed shadow-card">
-            <View className="flex-row items-center gap-sm mb-sm">
-              <View className="w-10 h-10 rounded-xl bg-statusUL/10 items-center justify-center">
-                <Trash2 size={19} color="#C84B4B" strokeWidth={2} />
-              </View>
-              <Text className="text-statusUL font-black text-lg">
-                Danger Zone
-              </Text>
-            </View>
-            <Text className="text-meta text-sm leading-6 mb-lg">
-              Deleting your account is irreversible. Your profile, flight
-              history, and preferences will be wiped from Orion after the
-              backend retention period completes.
-            </Text>
-            <TouchableOpacity
-              onPress={handleDeleteAccount}
-              disabled={isDeletingAccount}
-              className="bg-statusUL/5 py-md rounded-xl border border-statusUL/20 items-center"
-              style={{ opacity: isDeletingAccount ? 0.6 : 1 }}
-            >
-              {isDeletingAccount ? (
-                <ActivityIndicator
-                  key="deleting"
-                  size="small"
-                  color="#C84B4B"
-                />
-              ) : (
-                <Text key="delete-label" className="text-statusUL font-black">
-                  Request Account Deletion
-                </Text>
-              )}
-            </TouchableOpacity>
-          </View>
-
-          <Text className="text-center text-meta text-xs mt-xl">
-            Security Version 1.0.0
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          paddingHorizontal: 16,
+          paddingTop: 24,
+          paddingBottom: 40,
+        }}
+      >
+        {/* Hero Section */}
+        <View className="mb-xl">
+          <Text className="text-3xl font-black text-primary tracking-tight">
+            Protect your{"\n"}
+            <Text className="text-primaryBrand">digital identity.</Text>
           </Text>
         </View>
+
+        {/* Essential Security Section */}
+        <Text className="text-xs font-black text-meta uppercase tracking-widest mb-md ml-1">
+          Access Control
+        </Text>
+
+        <SecurityCard
+          icon={Lock}
+          title="Password"
+          description="Update your secret key regularly to keep your account safe."
+          onPress={() => console.log("Change Password")}
+        />
+
+        <SecurityCard
+          icon={Smartphone}
+          title="2FA Authentication"
+          description="Add an extra layer of protection to your sign-in process."
+        >
+          <Switch
+            value={is2FAEnabled}
+            onValueChange={handle2FAToggle}
+            trackColor={{ false: "#E3E8F4", true: "#1568C4" }}
+            thumbColor="#FFFFFF"
+          />
+        </SecurityCard>
+
+        {/* Account Integrity Section */}
+        <Text className="text-xs font-black text-meta uppercase tracking-widest mt-lg mb-md ml-1">
+          Privacy & Data
+        </Text>
+
+        {/* <SecurityCard
+          icon={ShieldCheck}
+          title="Login Activity"
+          description="Check where and when you've been logged in."
+          onPress={() => {}}
+        /> */}
+
+        {/* Dangerous Zone */}
+        <View className="mt-xl p-lg rounded-2xl bg-white border border-statusUL/10 border-dashed">
+          <View className="flex-row items-center gap-sm mb-sm">
+            <Trash2 size={18} color="#C84B4B" />
+            <Text className="text-statusUL font-bold text-lg">Danger Zone</Text>
+          </View>
+          <Text className="text-meta text-sm mb-lg">
+            Deleting your account is irreversible. All your data, flight
+            history, and preferences will be wiped from our servers.
+          </Text>
+          <TouchableOpacity
+            onPress={handleDeleteAccount}
+            className="bg-statusUL/5 py-md rounded-xl border border-statusUL/20 items-center"
+          >
+            <Text className="text-statusUL font-bold">
+              Request Account Deletion
+            </Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text className="text-center text-meta text-xs mt-xl">
+          Security Version 1.0.0
+        </Text>
       </ScrollView>
     </SafeAreaView>
   );
