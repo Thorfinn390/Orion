@@ -30,10 +30,8 @@ const Ticket = ({ data, onClose }: TicketProps) => {
 
   return (
     <View className="my-4 self-center" style={{ width: width * 0.9 }}>
-      {/* Top Section */}
       <View className="bg-white rounded-t-3xl p-6 border-x border-t border-black/5">
         <View className="flex-row justify-between items-center mb-6 pr-6">
-          {/* Added padding right to prevent overlap with button if needed */}
           <View className="bg-nova/10 px-3 py-1 rounded-full">
             <Text className="text-nova font-black text-xs uppercase tracking-widest">
               {flight.flight_number}
@@ -73,14 +71,12 @@ const Ticket = ({ data, onClose }: TicketProps) => {
         </View>
       </View>
 
-      {/* The Perforated Divider */}
       <View className="flex-row items-center bg-white border-x border-black/5">
         <View className="w-6 h-6 rounded-full bg-surface -ml-3" />
         <View className="flex-1 border-b border-dashed border-borderDefault mx-1" />
         <View className="w-6 h-6 rounded-full bg-surface -mr-3" />
       </View>
 
-      {/* Bottom Section */}
       <View className="bg-white rounded-b-3xl p-6 pt-4 border-x border-b border-black/5">
         <View className="flex-row justify-between">
           <View>
@@ -88,7 +84,7 @@ const Ticket = ({ data, onClose }: TicketProps) => {
               Terminal
             </Text>
             <Text className="text-textPrimary text-lg font-bold">
-              {flight.terminal || "TBA"}
+              {String(flight.terminal || "TBA")}
             </Text>
           </View>
 

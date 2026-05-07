@@ -212,9 +212,6 @@ const ChatSideBar = ({
                 </Text>
               </View>
             </View>
-            <TouchableOpacity className="bg-surface p-sm rounded-xl border border-borderDefault">
-              <Ionicons name="settings-outline" size={18} color="#0D1A3A" />
-            </TouchableOpacity>
           </View>
         </View>
       </View>
