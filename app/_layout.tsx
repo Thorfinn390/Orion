@@ -1,5 +1,4 @@
 import FloatingAIButton from "@/components/AI/FloatingAIButton";
-import { queueNovaReactionFromNotification } from "@/utils/novaReactions";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BlurView } from "expo-blur";
 import { router, Stack, usePathname } from "expo-router";
@@ -8,7 +7,7 @@ import { MotiView } from "moti";
 import { useEffect, useState } from "react";
 import { StyleSheet, Text } from "react-native";
 import "react-native-gesture-handler";
-import { LogLevel, OneSignal } from 'react-native-onesignal';
+import { LogLevel, OneSignal } from "react-native-onesignal";
 import "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import Toast from "react-native-toast-message";
@@ -27,47 +26,20 @@ const queryClient = new QueryClient({
 
 export default function RootLayout() {
   useEffect(() => {
-
     // Enable verbose logging for debugging (remove in production)
 
     OneSignal.Debug.setLogLevel(LogLevel.Verbose);
 
-
     // Replace with your OneSignal App ID from Dashboard > Settings > Keys & IDs
 
-    OneSignal.initialize('9b5533a6-6db4-42f5-a55e-d4d89b2e062d');
-
+    OneSignal.initialize("9b5533a6-6db4-42f5-a55e-d4d89b2e062d");
 
     // Prompt for push permission on first launch.
 
     // In production, consider using an in-app message instead for better opt-in rates.
 
     OneSignal.Notifications.requestPermission(false);
-
-    const foregroundReactionHandler = (event: any) => {
-      const notification = event.getNotification?.() ?? event.notification;
-      queueNovaReactionFromNotification(notification);
-    };
-
-    const clickReactionHandler = (event: any) => {
-      queueNovaReactionFromNotification(event.notification);
-    };
-
-    OneSignal.Notifications.addEventListener(
-      "foregroundWillDisplay",
-      foregroundReactionHandler,
-    );
-    OneSignal.Notifications.addEventListener("click", clickReactionHandler);
-
-    return () => {
-      OneSignal.Notifications.removeEventListener(
-        "foregroundWillDisplay",
-        foregroundReactionHandler,
-      );
-      OneSignal.Notifications.removeEventListener("click", clickReactionHandler);
-    };
-
-  }, []); 
+  }, []);
   const pathname = usePathname();
   const [recognizing, setRecognizing] = useState(false);
   const [canRecord, setCanRecord] = useState(false);

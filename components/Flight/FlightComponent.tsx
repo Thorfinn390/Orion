@@ -1,4 +1,3 @@
-import { useJourneySimulationStore } from "@/stores/useJourneySimulationStore";
 import { apiFetch } from "@/utils/apiFetch";
 import { Ionicons } from "@expo/vector-icons";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
@@ -25,10 +24,6 @@ export default function FlightComponent({ data }: FlightProps) {
   const [modalVisible, setModalVisible] = useState(false);
   const [password, setPassword] = useState("");
 
-  const registerTicket = useJourneySimulationStore(
-    (state) => state.registerTicket,
-  );
-
   const handleGenerateGuide = () => {
     const registeredTicket = {
       userFlightId: data.userFlightId,
@@ -38,8 +33,6 @@ export default function FlightComponent({ data }: FlightProps) {
       terminal: data.terminal,
       checklistItems: data.checklistItems,
     };
-
-    registerTicket(registeredTicket);
 
     router.push({
       pathname: `/(journey)/FlightGuide/[id]`,
